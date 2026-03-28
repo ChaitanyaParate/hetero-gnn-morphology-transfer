@@ -1,0 +1,311 @@
+<mxfile host="Electron" agent="Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) draw.io/29.6.6 Chrome/144.0.7559.236 Electron/40.8.4 Safari/537.36" version="29.6.6">
+  <diagram id="xomMxANQSnD7srzQpO5C" name="Page-1">
+    <mxGraphModel dx="4823" dy="1849" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1654" pageHeight="1169" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="bg_train" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;opacity=50;verticalAlign=top;gradientColor=none;" value="" vertex="1">
+          <mxGeometry height="1185" width="365" x="-850" y="210" as="geometry" />
+        </mxCell>
+        <mxCell id="bg_runtime" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fad7ac;strokeColor=#b46504;opacity=50;" value="" vertex="1">
+          <mxGeometry height="900" width="760" x="-255" y="495" as="geometry" />
+        </mxCell>
+        <mxCell id="bg_eval" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d0cee2;strokeColor=#56517e;opacity=50;" value="" vertex="1">
+          <mxGeometry height="400" width="1150" x="-700" y="1480" as="geometry" />
+        </mxCell>
+        <mxCell id="lbl_train" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;fontSize=13;fontStyle=1;fontColor=#1a237e;" value="PHASE 1 — TRAINING PIPELINE (Kaggle GPU T4)" vertex="1">
+          <mxGeometry height="24" width="360" x="-835" y="223" as="geometry" />
+        </mxCell>
+        <mxCell id="lbl_runtime" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;fontSize=13;fontStyle=1;fontColor=#1b5e20;" value="PHASE 2 — RUNTIME INFERENCE PIPELINE (ROS2 Jazzy + Gazebo Harmonic)" vertex="1">
+          <mxGeometry height="24" width="760" x="-255" y="503" as="geometry" />
+        </mxCell>
+        <mxCell id="lbl_eval" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;fontSize=13;fontStyle=1;fontColor=#4a148c;" value="PHASE 3 — EVALUATION AND COMPARISON (H1: GNN generalizes better than MLP)" vertex="1">
+          <mxGeometry height="24" width="1140" x="-690" y="1488" as="geometry" />
+        </mxCell>
+        <mxCell id="leg_bg" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFA0A0;strokeColor=#03090A;fontSize=11;" value="" vertex="1">
+          <mxGeometry height="220" width="180" x="580" y="425" as="geometry" />
+        </mxCell>
+        <mxCell id="leg_title" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=center;fontStyle=1;fontSize=11;" value="LEGEND" vertex="1">
+          <mxGeometry height="20" width="180" x="580" y="430" as="geometry" />
+        </mxCell>
+        <mxCell id="leg1" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f0a30a;strokeColor=#BD7000;fontSize=10;fontColor=#000000;" value="Data / Files" vertex="1">
+          <mxGeometry height="24" width="110" x="590" y="455" as="geometry" />
+        </mxCell>
+        <mxCell id="leg2" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#1ba1e2;strokeColor=#006EAF;fontSize=10;fontColor=#ffffff;" value="GNN / ML Component" vertex="1">
+          <mxGeometry height="24" width="110" x="590" y="487" as="geometry" />
+        </mxCell>
+        <mxCell id="leg3" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#008a00;strokeColor=#005700;fontSize=10;fontColor=#ffffff;" value="ROS2 / Gazebo Node" vertex="1">
+          <mxGeometry height="24" width="110" x="590" y="519" as="geometry" />
+        </mxCell>
+        <mxCell id="leg4" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f0a30a;strokeColor=#BD7000;fontSize=10;fontColor=#000000;" value="Vision / LLM Node" vertex="1">
+          <mxGeometry height="24" width="110" x="590" y="551" as="geometry" />
+        </mxCell>
+        <mxCell id="leg5" parent="1" style="rhombus;whiteSpace=wrap;html=1;fillColor=#e51400;strokeColor=#B20000;fontSize=10;fontColor=#ffffff;" value="Decision / Critical" vertex="1">
+          <mxGeometry height="36" width="110" x="590" y="581" as="geometry" />
+        </mxCell>
+        <mxCell id="t1" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f0a30a;strokeColor=#BD7000;fontSize=11;fontColor=#000000;" value="&lt;b&gt;URDF Robot Files&lt;/b&gt;&lt;br&gt;quadruped.urdf — 12 DOF&lt;br&gt;hexapod.urdf — 18 DOF&lt;br&gt;damaged_quad.urdf — 9 DOF" vertex="1">
+          <mxGeometry height="80" width="230" x="-785" y="265" as="geometry" />
+        </mxCell>
+        <mxCell id="t2" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#1ba1e2;strokeColor=#006EAF;fontSize=11;fontColor=#ffffff;" value="&lt;b&gt;urdf_to_graph.py&lt;/b&gt;&lt;br&gt;Joints → Nodes (angle, vel, effort limit)&lt;br&gt;Links → Edges (axis, parent-child)&lt;br&gt;Output: torch_geometric.data.Data" vertex="1">
+          <mxGeometry height="80" width="230" x="-785" y="395" as="geometry" />
+        </mxCell>
+        <mxCell id="t3" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#008a00;strokeColor=#005700;fontSize=11;fontColor=#ffffff;" value="&lt;b&gt;PyBullet RobotEnv&lt;/b&gt; (gym.Env)&lt;br&gt;DIRECT mode — headless / no display&lt;br&gt;Reward: fwd_velocity − 5 × fall&lt;br&gt;Done: base height below threshold" vertex="1">
+          <mxGeometry height="80" width="230" x="-785" y="525" as="geometry" />
+        </mxCell>
+        <mxCell id="t4" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#1ba1e2;strokeColor=#006EAF;fontSize=11;fontColor=#ffffff;" value="&lt;b&gt;GNN Actor-Critic&lt;/b&gt;&lt;br&gt;• 2-layer GCNConv encoder&lt;br&gt;• Global mean pool → Value (critic)&lt;br&gt;• Per-node MLP head → Actions (actor)&lt;br&gt;• Same weights, any graph size" vertex="1">
+          <mxGeometry height="95" width="230" x="-785" y="655" as="geometry" />
+        </mxCell>
+        <mxCell id="t5" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#1ba1e2;strokeColor=#006EAF;fontSize=11;fontColor=#ffffff;" value="&lt;b&gt;PPO Rollout Buffer&lt;/b&gt;&lt;br&gt;PyG Batch.from_data_list() for batching&lt;br&gt;Stores: graph snapshots, rewards,&lt;br&gt;actions, values, log_probs" vertex="1">
+          <mxGeometry height="80" width="230" x="-785" y="800" as="geometry" />
+        </mxCell>
+        <mxCell id="t6" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#1ba1e2;strokeColor=#006EAF;fontSize=11;fontColor=#ffffff;" value="&lt;b&gt;PPO Loss (CleanRL reference impl.)&lt;/b&gt;&lt;br&gt;• Clipped surrogate (clip_coef=0.2)&lt;br&gt;• Value function loss&lt;br&gt;• Entropy bonus (ent_coef=0.01)" vertex="1">
+          <mxGeometry height="80" width="230" x="-785" y="930" as="geometry" />
+        </mxCell>
+        <mxCell id="t7" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#1ba1e2;strokeColor=#006EAF;fontSize=11;fontColor=#ffffff;" value="&lt;b&gt;Adam Optimizer&lt;/b&gt;&lt;br&gt;lr=3e-4, grad clip=0.5&lt;br&gt;4 minibatches per rollout" vertex="1">
+          <mxGeometry height="65" width="230" x="-785" y="1060" as="geometry" />
+        </mxCell>
+        <mxCell id="t8" parent="1" style="rhombus;whiteSpace=wrap;html=1;fillColor=#e51400;strokeColor=#B20000;fontSize=11;fontColor=#ffffff;" value="Converged?&lt;br&gt;500k steps / 5 seeds" vertex="1">
+          <mxGeometry height="80" width="190" x="-765" y="1170" as="geometry" />
+        </mxCell>
+        <mxCell id="t9" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f0a30a;strokeColor=#BD7000;fontSize=11;fontColor=#000000;" value="&lt;b&gt;Trained GNN Checkpoint (.pt)&lt;/b&gt;&lt;br&gt;5 seeds saved — download from Kaggle&lt;br&gt;Used in: runtime + evaluation" vertex="1">
+          <mxGeometry height="65" width="230" x="-782.5" y="1304" as="geometry" />
+        </mxCell>
+        <mxCell id="t_mlp_note" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#6a00ff;strokeColor=#3700CC;fontSize=10;fontStyle=2;fontColor=#ffffff;" value="NOTE: MLP Baseline trained in parallel&lt;br&gt;Same env, SB3 PPO, MlpPolicy&lt;br&gt;Flat obs vector (12-dim for quadruped)&lt;br&gt;Also 5 seeds, 500k steps" vertex="1">
+          <mxGeometry height="70" width="230" x="-1180" y="1719" as="geometry" />
+        </mxCell>
+        <mxCell id="ta1" edge="1" parent="1" source="t1" style="edgeStyle=orthogonalEdgeStyle;" target="t2">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="ta2" edge="1" parent="1" source="t2" style="edgeStyle=orthogonalEdgeStyle;fontSize=10;" target="t3" value="PyG graph data">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="ta3" edge="1" parent="1" source="t3" style="edgeStyle=orthogonalEdgeStyle;fontSize=10;" target="t4" value="obs + graph">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="ta_fb" edge="1" parent="1" source="t4" style="edgeStyle=orthogonalEdgeStyle;exitX=1;exitY=0.5;entryX=1;entryY=0.5;strokeColor=#b85450;fontColor=#b85450;fontSize=10;" target="t3" value="joint torques">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="-515" y="702" />
+              <mxPoint x="-515" y="565" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="ta4" edge="1" parent="1" source="t4" style="edgeStyle=orthogonalEdgeStyle;fontSize=10;" target="t5" value="values, log_probs">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="ta5" edge="1" parent="1" source="t5" style="edgeStyle=orthogonalEdgeStyle;" target="t6">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="ta6" edge="1" parent="1" source="t6" style="edgeStyle=orthogonalEdgeStyle;" target="t7">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="ta7" edge="1" parent="1" source="t7" style="edgeStyle=orthogonalEdgeStyle;fontSize=10;" target="t8" value="update weights">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="ta_no" edge="1" parent="1" source="t8" style="edgeStyle=orthogonalEdgeStyle;exitX=0;exitY=0.5;entryX=0;entryY=0.5;strokeColor=#b85450;fontColor=#b85450;fontSize=10;" target="t3" value="No — next episode">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="-825" y="1210" />
+              <mxPoint x="-825" y="565" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="ta_yes" edge="1" parent="1" source="t8" style="edgeStyle=orthogonalEdgeStyle;strokeColor=#3b6d11;fontColor=#3b6d11;fontSize=10;" target="t9" value="Yes — save">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="-670" y="1250" />
+              <mxPoint x="-670" y="1300" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="r1" parent="1" style="ellipse;whiteSpace=wrap;html=1;fillColor=#f0a30a;strokeColor=#BD7000;fontSize=11;fontStyle=1;fontColor=#000000;" value="&lt;b&gt;Natural Language Command&lt;/b&gt;&lt;br&gt;&quot;Navigate to the red box&quot;" vertex="1">
+          <mxGeometry height="60" width="260" x="-55" y="545" as="geometry" />
+        </mxCell>
+        <mxCell id="r2" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#008a00;strokeColor=#005700;fontSize=11;fontColor=#ffffff;" value="&lt;b&gt;Gazebo Harmonic Simulation&lt;/b&gt;&lt;br&gt;Robot spawned via SDF / URDF&lt;br&gt;Camera + IMU + contact sensors&lt;br&gt;ROS2 Jazzy bridge active" vertex="1">
+          <mxGeometry height="90" width="250" x="210" y="555" as="geometry" />
+        </mxCell>
+        <mxCell id="r3" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#008a00;strokeColor=#005700;fontSize=11;fontColor=#ffffff;" value="&lt;b&gt;/camera/image_raw&lt;/b&gt;&lt;br&gt;ROS2 topic — RGB stream&lt;br&gt;from Gazebo camera sensor" vertex="1">
+          <mxGeometry height="65" width="200" x="-225" y="685" as="geometry" />
+        </mxCell>
+        <mxCell id="r4" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#008a00;strokeColor=#005700;fontSize=11;fontColor=#ffffff;" value="&lt;b&gt;/joint_states Topic&lt;/b&gt;&lt;br&gt;position + velocity per joint&lt;br&gt;Published by Gazebo bridge" vertex="1">
+          <mxGeometry height="65" width="190" x="235" y="695" as="geometry" />
+        </mxCell>
+        <mxCell id="r5" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f0a30a;strokeColor=#BD7000;fontSize=11;fontColor=#000000;" value="&lt;b&gt;YOLOv8n Detection Node&lt;/b&gt;&lt;br&gt;Object detection + classification&lt;br&gt;3D position from depth / bbox size" vertex="1">
+          <mxGeometry height="70" width="210" x="-225" y="805" as="geometry" />
+        </mxCell>
+        <mxCell id="r6" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#1ba1e2;strokeColor=#006EAF;fontSize=11;fontColor=#ffffff;" value="&lt;b&gt;urdf_to_graph.py (runtime)&lt;/b&gt;&lt;br&gt;Live joint_states → node features&lt;br&gt;goal_pos appended to each node&lt;br&gt;Output: PyG Data object" vertex="1">
+          <mxGeometry height="80" width="220" x="225" y="820" as="geometry" />
+        </mxCell>
+        <mxCell id="r7" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f0a30a;strokeColor=#BD7000;fontSize=11;fontColor=#000000;" value="&lt;b&gt;Scene Graph Generator Node&lt;/b&gt;&lt;br&gt;Converts detections to JSON:&lt;br&gt;{objects: [{label, position, distance}]}&lt;br&gt;Publishes: /scene_graph (ROS2)" vertex="1">
+          <mxGeometry height="80" width="230" x="-225" y="935" as="geometry" />
+        </mxCell>
+        <mxCell id="r8" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#1ba1e2;strokeColor=#006EAF;fontSize=11;fontColor=#ffffff;" value="&lt;b&gt;GNN Policy Node&lt;/b&gt;&lt;br&gt;Loaded checkpoint (.pt)&lt;br&gt;Input: PyG graph + goal features&lt;br&gt;Output: joint torques @ 20 Hz&lt;br&gt;Separate thread from LLM (async)" vertex="1">
+          <mxGeometry height="95" width="220" x="225" y="955" as="geometry" />
+        </mxCell>
+        <mxCell id="r9" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f0a30a;strokeColor=#BD7000;fontSize=11;fontColor=#000000;" value="&lt;b&gt;LLM Planner Node&lt;/b&gt;&lt;br&gt;Anthropic / OpenAI API&lt;br&gt;System prompt: robot skills + constraints&lt;br&gt;User message: scene JSON + command&lt;br&gt;Output: JSON action plan&lt;br&gt;Replanning cadence: every 5 seconds" vertex="1">
+          <mxGeometry height="105" width="230" x="-225" y="1075" as="geometry" />
+        </mxCell>
+        <mxCell id="r10" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#008a00;strokeColor=#005700;fontSize=11;fontColor=#ffffff;" value="&lt;b&gt;/joint_commands Topic&lt;/b&gt;&lt;br&gt;Torques published @ 20 Hz&lt;br&gt;Consumed by Gazebo actuators" vertex="1">
+          <mxGeometry height="65" width="200" x="235" y="1105" as="geometry" />
+        </mxCell>
+        <mxCell id="r11" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f0a30a;strokeColor=#BD7000;fontSize=11;fontColor=#000000;" value="&lt;b&gt;Skill Translator Node&lt;/b&gt;&lt;br&gt;{skill: navigate_to, target: box_1}&lt;br&gt;→ Extract box_1 pos from scene graph&lt;br&gt;→ Update goal_pos in reward fn" vertex="1">
+          <mxGeometry height="80" width="230" x="-225" y="1235" as="geometry" />
+        </mxCell>
+        <mxCell id="ra1" edge="1" parent="1" source="r1" style="edgeStyle=orthogonalEdgeStyle;fontSize=10;" target="r9" value="user text">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="75" y="1127" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="ra2" edge="1" parent="1" source="r2" style="edgeStyle=orthogonalEdgeStyle;fontSize=10;" target="r3" value="image">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="-125" y="640" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="ra3" edge="1" parent="1" source="r2" style="edgeStyle=orthogonalEdgeStyle;fontSize=10;" target="r4" value="joint data">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="ra4" edge="1" parent="1" source="r3" style="edgeStyle=orthogonalEdgeStyle;fontSize=10;" target="r5" value="RGB frames">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="ra5" edge="1" parent="1" source="r4" style="edgeStyle=orthogonalEdgeStyle;fontSize=10;" target="r6" value="live state">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="ra6" edge="1" parent="1" source="r5" style="edgeStyle=orthogonalEdgeStyle;fontSize=10;" target="r7" value="detections">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="ra7" edge="1" parent="1" source="r6" style="edgeStyle=orthogonalEdgeStyle;fontSize=10;" target="r8" value="PyG graph">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="ra8" edge="1" parent="1" source="r7" style="edgeStyle=orthogonalEdgeStyle;fontSize=10;" target="r9" value="scene JSON">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="ra9" edge="1" parent="1" source="r8" style="edgeStyle=orthogonalEdgeStyle;fontSize=10;" target="r10" value="torques">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="ra10" edge="1" parent="1" source="r9" style="edgeStyle=orthogonalEdgeStyle;fontSize=10;" target="r11" value="JSON plan">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="ra11" edge="1" parent="1" source="r10" style="edgeStyle=orthogonalEdgeStyle;exitX=1;exitY=0.5;entryX=1;entryY=0.5;strokeColor=#3b6d11;fontColor=#3b6d11;fontSize=10;" target="r2" value="actuate joints">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="475" y="1137" />
+              <mxPoint x="475" y="590" />
+              <mxPoint x="460" y="590" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="ra12" edge="1" parent="1" source="r11" style="edgeStyle=orthogonalEdgeStyle;exitX=1;exitY=0.5;entryX=0;entryY=0.5;strokeColor=light-dark(#000000,#000000);fontColor=#000000;fontSize=10;" target="r8" value="goal_pos">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="105" y="1275" />
+              <mxPoint x="105" y="1002" />
+              <mxPoint x="225" y="1002" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="ra13" edge="1" parent="1" source="t9" style="edgeStyle=elbowEdgeStyle;elbow=orthogonal;dashed=1;strokeColor=light-dark(#000000,#000000);fontColor=#000000;fontSize=10;exitX=1;exitY=0.5;exitDx=0;exitDy=0;" value="load weights">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="-397.5" y="1404.5" />
+              <mxPoint x="312.5" y="1404.5" />
+              <mxPoint x="312.5" y="794.5" />
+              <mxPoint x="302.5" y="794.5" />
+            </Array>
+            <mxPoint x="-935" y="1439.0000000000002" as="sourcePoint" />
+            <mxPoint x="222.49999999999955" y="1035" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="eval_h1" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=center;fontStyle=1;fontSize=11;fontColor=#a32d2d;" value="MLP BASELINE (Fails on morphology transfer)" vertex="1">
+          <mxGeometry height="20" width="280" x="-670" y="1518" as="geometry" />
+        </mxCell>
+        <mxCell id="eval_h2" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=center;fontStyle=1;fontSize=11;fontColor=#185fa5;" value="GNN POLICY (Proposed — morphology agnostic)" vertex="1">
+          <mxGeometry height="20" width="300" x="100" y="1518" as="geometry" />
+        </mxCell>
+        <mxCell id="e1" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#6a00ff;strokeColor=#3700CC;fontSize=11;fontColor=#ffffff;" value="&lt;b&gt;MLP Policy — Trained&lt;/b&gt;&lt;br&gt;Quadruped, 12 DOF&lt;br&gt;Reward: ≥150 (convergence threshold)" vertex="1">
+          <mxGeometry height="75" width="210" x="-650" y="1555" as="geometry" />
+        </mxCell>
+        <mxCell id="e2" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#1ba1e2;strokeColor=#006EAF;fontSize=11;fontColor=#ffffff;" value="&lt;b&gt;GNN Policy — Trained&lt;/b&gt;&lt;br&gt;Quadruped, 12 DOF&lt;br&gt;Same conditions as MLP" vertex="1">
+          <mxGeometry height="75" width="210" x="170" y="1555" as="geometry" />
+        </mxCell>
+        <mxCell id="e3" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d80073;strokeColor=#A50040;fontSize=11;fontColor=#ffffff;" value="&lt;b&gt;Transfer: Hexapod (18 DOF)&lt;/b&gt;&lt;br&gt;Input dim mismatch — CRASH&lt;br&gt;Padded obs: ~0 reward&lt;br&gt;Generalization gap: LARGE" vertex="1">
+          <mxGeometry height="80" width="200" x="-670" y="1690" as="geometry" />
+        </mxCell>
+        <mxCell id="e4" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d80073;strokeColor=#A50040;fontSize=11;fontColor=#ffffff;" value="&lt;b&gt;Transfer: Damaged (9 DOF)&lt;/b&gt;&lt;br&gt;Near-zero reward&lt;br&gt;Gen gap = R_quad − R_dmg (LARGE)&lt;br&gt;This is Baseline Gen Gap" vertex="1">
+          <mxGeometry height="80" width="200" x="-670" y="1790" as="geometry" />
+        </mxCell>
+        <mxCell id="e5" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#008a00;strokeColor=#005700;fontSize=11;fontColor=#ffffff;" value="&lt;b&gt;Transfer: Hexapod (18 DOF)&lt;/b&gt;&lt;br&gt;Same weights, larger graph&lt;br&gt;Measured reward over 20 episodes&lt;br&gt;Generalization gap: SMALLER" vertex="1">
+          <mxGeometry height="80" width="210" x="190" y="1690" as="geometry" />
+        </mxCell>
+        <mxCell id="e6" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#008a00;strokeColor=#005700;fontSize=11;fontColor=#ffffff;" value="&lt;b&gt;Transfer: Damaged (9 DOF)&lt;/b&gt;&lt;br&gt;Graph auto-adapts to 9 nodes&lt;br&gt;Gen gap (SMALLER) = H1 confirmed&lt;br&gt;Zero-shot transfer demonstrated" vertex="1">
+          <mxGeometry height="80" width="210" x="190" y="1790" as="geometry" />
+        </mxCell>
+        <mxCell id="e7" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#6a00ff;strokeColor=#3700CC;fontSize=11;fontColor=#ffffff;" value="&lt;b&gt;RESULTS TABLE (all 20 runs)&lt;/b&gt;&lt;br&gt;• Mean reward ± std — 5 seeds per condition&lt;br&gt;• Generalization gap: MLP vs GNN&lt;br&gt;• Task success rate (%)&lt;br&gt;• Steps to 80% of max reward&lt;br&gt;• LLM replanning frequency&lt;br&gt;• Recovery rate (falls per episode)" vertex="1">
+          <mxGeometry height="130" width="280" x="-290" y="1720" as="geometry" />
+        </mxCell>
+        <mxCell id="vs_lbl" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;fontSize=26;fontStyle=1;fontColor=#888888;" value="VS" vertex="1">
+          <mxGeometry height="40" width="70" x="-165" y="1569" as="geometry" />
+        </mxCell>
+        <mxCell id="ea1" edge="1" parent="1" source="e1" style="edgeStyle=orthogonalEdgeStyle;" target="e3">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="ea2" edge="1" parent="1" source="e1" style="edgeStyle=orthogonalEdgeStyle;" target="e4">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="-545" y="1650" />
+              <mxPoint x="-680" y="1650" />
+              <mxPoint x="-680" y="1830" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="ea3" edge="1" parent="1" source="e2" style="edgeStyle=orthogonalEdgeStyle;" target="e5">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="ea4" edge="1" parent="1" source="e2" style="edgeStyle=orthogonalEdgeStyle;" target="e6">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="275" y="1650" />
+              <mxPoint x="420" y="1650" />
+              <mxPoint x="420" y="1830" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="ea5" edge="1" parent="1" source="e3" style="edgeStyle=orthogonalEdgeStyle;fontSize=10;" target="e7" value="feed numbers">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="ea6" edge="1" parent="1" source="e4" style="edgeStyle=orthogonalEdgeStyle;" target="e7">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="ea7" edge="1" parent="1" source="e5" style="edgeStyle=orthogonalEdgeStyle;" target="e7">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="ea8" edge="1" parent="1" source="e6" style="edgeStyle=orthogonalEdgeStyle;" target="e7">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="ea9" edge="1" parent="1" style="edgeStyle=orthogonalEdgeStyle;dashed=1;strokeColor=#9673a6;fontColor=#9673a6;fontSize=10;" target="e1" value="load for eval">
+          <mxGeometry relative="1" x="0.2479" y="-24" as="geometry">
+            <mxPoint x="19" y="-23" as="offset" />
+            <Array as="points">
+              <mxPoint x="-525" y="1510" />
+              <mxPoint x="-545" y="1510" />
+            </Array>
+            <mxPoint x="-525" y="1490" as="sourcePoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="ea10" edge="1" parent="1" style="edgeStyle=orthogonalEdgeStyle;dashed=1;strokeColor=#6c8ebf;fontColor=#6c8ebf;fontSize=10;" target="e2" value="load for eval">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="-525" y="1490" />
+              <mxPoint x="275" y="1490" />
+              <mxPoint x="275" y="1555" />
+            </Array>
+            <mxPoint x="-410" y="1490" as="sourcePoint" />
+          </mxGeometry>
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
