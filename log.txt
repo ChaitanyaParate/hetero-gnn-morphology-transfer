@@ -1,0 +1,161 @@
+pybullet build time: Mar 29 2026 16:48:40
+Device: cuda
+
+[URDFGraphBuilder] anymal_stripped.urdf
+  Nodes            : 13  (body + 12 joints)
+  Edges            : 24  (bidirectional)
+  Node feature dim : 13  (static 11 + runtime 2)
+  Edge feature dim : 4
+  Action dim       : 12  (one torque per controllable joint)
+  Joint order      : ['LF_HAA', 'LF_HFE', 'LF_KFE', 'LH_HAA', 'LH_HFE', 'LH_KFE', 'RF_HAA', 'RF_HFE', 'RF_KFE', 'RH_HAA', 'RH_HFE', 'RH_KFE']
+
+Loading checkpoint: /kaggle/working/checkpoints/gnn_ppo_800768.pt
+Resumed from step 800768
+
+Agent parameters: 51,086
+Rollout steps: 2048 | Minibatch size: 64
+Total updates: 781
+
+step=  802816 | ep_rew=-2218.33 | ep_len=   872 | pg= 0.0114 | vf=468.4851 | ent=11.2716 | clip=0.382 | sps=39523
+step=  804864 | ep_rew=-2535.24 | ep_len=   936 | pg= 0.0032 | vf=833.7186 | ent=11.3152 | clip=0.316 | sps=20136
+step=  806912 | ep_rew=-2388.70 | ep_len=   870 | pg=-0.0052 | vf=573.1616 | ent=11.3619 | clip=0.257 | sps=13570
+step=  808960 | ep_rew=-2389.68 | ep_len=   902 | pg=-0.0034 | vf=929.0072 | ent=11.4022 | clip=0.253 | sps=10254
+step=  811008 | ep_rew=-2495.94 | ep_len=   929 | pg=-0.0050 | vf=634.7540 | ent=11.4321 | clip=0.239 | sps=8259
+step=  813056 | ep_rew=-2586.66 | ep_len=   940 | pg=-0.0048 | vf=863.9860 | ent=11.4518 | clip=0.232 | sps=6926
+step=  815104 | ep_rew=-2614.64 | ep_len=   948 | pg=-0.0043 | vf=749.9298 | ent=11.4778 | clip=0.238 | sps=5969
+step=  817152 | ep_rew=-2545.77 | ep_len=   954 | pg=-0.0106 | vf=325.2978 | ent=11.5213 | clip=0.209 | sps=5242
+step=  819200 | ep_rew=-2588.12 | ep_len=   959 | pg=-0.0028 | vf=859.0895 | ent=11.5708 | clip=0.228 | sps=4680
+step=  821248 | ep_rew=-2607.04 | ep_len=   961 | pg=-0.0011 | vf=691.4320 | ent=11.6114 | clip=0.223 | sps=4224
+step=  823296 | ep_rew=-2623.99 | ep_len=   974 | pg=-0.0058 | vf=475.1765 | ent=11.6329 | clip=0.244 | sps=3859
+step=  825344 | ep_rew=-2478.49 | ep_len=   945 | pg=-0.0083 | vf=749.7834 | ent=11.6403 | clip=0.224 | sps=3549
+step=  827392 | ep_rew=-2548.82 | ep_len=   944 | pg=-0.0062 | vf=554.4843 | ent=11.6508 | clip=0.195 | sps=3290
+step=  829440 | ep_rew=-2550.46 | ep_len=   944 | pg=-0.0068 | vf=728.4290 | ent=11.6797 | clip=0.219 | sps=3068
+step=  831488 | ep_rew=-2493.83 | ep_len=   924 | pg=-0.0043 | vf=965.9458 | ent=11.7137 | clip=0.217 | sps=2869
+step=  833536 | ep_rew=-2487.71 | ep_len=   924 | pg=-0.0023 | vf=663.5597 | ent=11.7510 | clip=0.183 | sps=2699
+step=  835584 | ep_rew=-2606.38 | ep_len=   924 | pg=-0.0057 | vf=1026.7730 | ent=11.7773 | clip=0.188 | sps=2548
+step=  837632 | ep_rew=-2573.35 | ep_len=   915 | pg=-0.0041 | vf=647.2484 | ent=11.8063 | clip=0.209 | sps=2413
+step=  839680 | ep_rew=-2559.13 | ep_len=   915 | pg=-0.0007 | vf=493.1503 | ent=11.8369 | clip=0.187 | sps=2291
+step=  841728 | ep_rew=-2602.22 | ep_len=   915 | pg=-0.0053 | vf=756.6951 | ent=11.8614 | clip=0.180 | sps=2182
+step=  843776 | ep_rew=-2735.07 | ep_len=   944 | pg=-0.0029 | vf=807.3757 | ent=11.8960 | clip=0.178 | sps=2084
+step=  845824 | ep_rew=-2670.38 | ep_len=   932 | pg=-0.0033 | vf=699.1363 | ent=11.9308 | clip=0.186 | sps=1994
+step=  847872 | ep_rew=-2761.70 | ep_len=   959 | pg=-0.0090 | vf=697.0593 | ent=11.9500 | clip=0.202 | sps=1912
+step=  849920 | ep_rew=-2733.14 | ep_len=   969 | pg=-0.0053 | vf=562.6969 | ent=11.9679 | clip=0.203 | sps=1835
+step=  851968 | ep_rew=-2765.24 | ep_len=   969 | pg=-0.0040 | vf=947.7204 | ent=12.0023 | clip=0.188 | sps=1766
+  Checkpoint saved: ./checkpoints/gnn_ppo_851968.pt
+step=  854016 | ep_rew=-2707.57 | ep_len=   963 | pg=-0.0057 | vf=556.1051 | ent=12.0424 | clip=0.207 | sps=1702
+step=  856064 | ep_rew=-2730.73 | ep_len=   968 | pg=-0.0022 | vf=806.9895 | ent=12.0653 | clip=0.188 | sps=1644
+step=  858112 | ep_rew=-2690.63 | ep_len=   949 | pg=-0.0053 | vf=699.4748 | ent=12.0946 | clip=0.136 | sps=1589
+step=  860160 | ep_rew=-2732.54 | ep_len=   949 | pg=-0.0055 | vf=999.8516 | ent=12.1308 | clip=0.194 | sps=1538
+step=  862208 | ep_rew=-2635.92 | ep_len=   949 | pg=-0.0071 | vf=477.9693 | ent=12.1612 | clip=0.190 | sps=1491
+step=  864256 | ep_rew=-2687.82 | ep_len=   949 | pg=-0.0043 | vf=1036.7199 | ent=12.1925 | clip=0.182 | sps=1446
+step=  866304 | ep_rew=-2696.02 | ep_len=   940 | pg=-0.0110 | vf=778.6739 | ent=12.2244 | clip=0.209 | sps=1403
+step=  868352 | ep_rew=-2705.65 | ep_len=   934 | pg=-0.0011 | vf=1616.8510 | ent=12.2481 | clip=0.247 | sps=1363
+step=  870400 | ep_rew=-2772.96 | ep_len=   915 | pg=-0.0096 | vf=888.8782 | ent=12.2565 | clip=0.221 | sps=1326
+step=  872448 | ep_rew=-2860.83 | ep_len=   921 | pg=-0.0053 | vf=1132.5195 | ent=12.2711 | clip=0.241 | sps=1291
+step=  874496 | ep_rew=-2847.12 | ep_len=   925 | pg=-0.0042 | vf=662.0699 | ent=12.2972 | clip=0.147 | sps=1259
+step=  876544 | ep_rew=-2891.55 | ep_len=   922 | pg=-0.0055 | vf=1102.5975 | ent=12.3359 | clip=0.161 | sps=1227
+step=  878592 | ep_rew=-2847.45 | ep_len=   920 | pg= 0.0008 | vf=761.4393 | ent=12.3628 | clip=0.223 | sps=1197
+step=  880640 | ep_rew=-3012.77 | ep_len=   917 | pg=-0.0064 | vf=1342.6356 | ent=12.3800 | clip=0.224 | sps=1169
+step=  882688 | ep_rew=-2839.96 | ep_len=   871 | pg=-0.0055 | vf=775.4371 | ent=12.4047 | clip=0.162 | sps=1142
+step=  884736 | ep_rew=-2958.19 | ep_len=   909 | pg=-0.0071 | vf=849.3052 | ent=12.4390 | clip=0.190 | sps=1116
+step=  886784 | ep_rew=-2880.53 | ep_len=   909 | pg=-0.0004 | vf=982.2873 | ent=12.4657 | clip=0.251 | sps=1092
+step=  888832 | ep_rew=-2897.03 | ep_len=   925 | pg=-0.0023 | vf=667.9462 | ent=12.5009 | clip=0.216 | sps=1069
+step=  890880 | ep_rew=-2915.14 | ep_len=   925 | pg=-0.0001 | vf=1360.9088 | ent=12.5433 | clip=0.214 | sps=1047
+step=  892928 | ep_rew=-2844.41 | ep_len=   917 | pg=-0.0084 | vf=323.4983 | ent=12.5825 | clip=0.168 | sps=1026
+step=  894976 | ep_rew=-2825.89 | ep_len=   925 | pg=-0.0078 | vf=493.1961 | ent=12.6020 | clip=0.175 | sps=1006
+step=  897024 | ep_rew=-2783.58 | ep_len=   927 | pg=-0.0079 | vf=1160.0600 | ent=12.6098 | clip=0.170 | sps=987
+step=  899072 | ep_rew=-2819.51 | ep_len=   926 | pg=-0.0067 | vf=977.4225 | ent=12.6361 | clip=0.188 | sps=968
+step=  901120 | ep_rew=-2874.79 | ep_len=   953 | pg=-0.0070 | vf=1001.7450 | ent=12.6635 | clip=0.211 | sps=951
+  Checkpoint saved: ./checkpoints/gnn_ppo_901120.pt
+step=  903168 | ep_rew=-2913.27 | ep_len=   973 | pg=-0.0049 | vf=728.0240 | ent=12.6809 | clip=0.248 | sps=934
+step=  905216 | ep_rew=-2879.55 | ep_len=   961 | pg=-0.0023 | vf=876.9120 | ent=12.7055 | clip=0.212 | sps=918
+step=  907264 | ep_rew=-2894.90 | ep_len=   963 | pg=-0.0067 | vf=1013.6684 | ent=12.7357 | clip=0.255 | sps=902
+step=  909312 | ep_rew=-2844.48 | ep_len=   946 | pg= 0.0042 | vf=1003.5334 | ent=12.7654 | clip=0.254 | sps=887
+step=  911360 | ep_rew=-2776.72 | ep_len=   946 | pg= 0.0004 | vf=507.4531 | ent=12.7854 | clip=0.222 | sps=872
+step=  913408 | ep_rew=-2849.63 | ep_len=   954 | pg= 0.0018 | vf=884.6878 | ent=12.8113 | clip=0.210 | sps=858
+step=  915456 | ep_rew=-2940.10 | ep_len=   968 | pg=-0.0065 | vf=810.9054 | ent=12.8358 | clip=0.220 | sps=845
+step=  917504 | ep_rew=-2875.79 | ep_len=   972 | pg=-0.0081 | vf=475.1824 | ent=12.8503 | clip=0.195 | sps=832
+step=  919552 | ep_rew=-2792.84 | ep_len=   954 | pg=-0.0021 | vf=826.9232 | ent=12.8716 | clip=0.245 | sps=819
+step=  921600 | ep_rew=-2735.69 | ep_len=   952 | pg=-0.0032 | vf=607.1687 | ent=12.8924 | clip=0.203 | sps=808
+step=  923648 | ep_rew=-2810.75 | ep_len=   956 | pg=-0.0083 | vf=1035.6152 | ent=12.9252 | clip=0.281 | sps=796
+step=  925696 | ep_rew=-2781.02 | ep_len=   962 | pg=-0.0038 | vf=724.3437 | ent=12.9582 | clip=0.177 | sps=785
+step=  927744 | ep_rew=-2737.68 | ep_len=   979 | pg=-0.0080 | vf=499.8072 | ent=12.9912 | clip=0.207 | sps=774
+step=  929792 | ep_rew=-2702.85 | ep_len=   979 | pg=-0.0071 | vf=783.8605 | ent=13.0292 | clip=0.172 | sps=763
+step=  931840 | ep_rew=-2782.48 | ep_len=   979 | pg=-0.0008 | vf=663.3545 | ent=13.0468 | clip=0.233 | sps=753
+step=  933888 | ep_rew=-2718.20 | ep_len=   979 | pg=-0.0029 | vf=625.1814 | ent=13.0730 | clip=0.229 | sps=744
+step=  935936 | ep_rew=-2722.47 | ep_len=   979 | pg=-0.0061 | vf=643.5128 | ent=13.1026 | clip=0.197 | sps=734
+step=  937984 | ep_rew=-2782.72 | ep_len=   988 | pg= 0.0061 | vf=882.0669 | ent=13.1229 | clip=0.289 | sps=725
+step=  940032 | ep_rew=-2719.24 | ep_len=   988 | pg=-0.0055 | vf=386.9616 | ent=13.1426 | clip=0.161 | sps=716
+step=  942080 | ep_rew=-2693.72 | ep_len=   991 | pg=-0.0065 | vf=740.3034 | ent=13.1708 | clip=0.189 | sps=707
+step=  944128 | ep_rew=-2614.23 | ep_len=   991 | pg=-0.0020 | vf=362.1776 | ent=13.2023 | clip=0.208 | sps=699
+step=  946176 | ep_rew=-2562.61 | ep_len=   991 | pg=-0.0078 | vf=473.4501 | ent=13.2483 | clip=0.179 | sps=690
+step=  948224 | ep_rew=-2587.13 | ep_len=   956 | pg=-0.0064 | vf=605.4965 | ent=13.2878 | clip=0.202 | sps=683
+step=  950272 | ep_rew=-2499.05 | ep_len=   956 | pg=-0.0095 | vf=594.1392 | ent=13.3095 | clip=0.180 | sps=675
+  Checkpoint saved: ./checkpoints/gnn_ppo_950272.pt
+step=  952320 | ep_rew=-2493.01 | ep_len=   956 | pg=-0.0061 | vf=493.0823 | ent=13.3307 | clip=0.174 | sps=667
+step=  954368 | ep_rew=-2490.48 | ep_len=   956 | pg=-0.0018 | vf=669.2612 | ent=13.3497 | clip=0.218 | sps=660
+step=  956416 | ep_rew=-2479.50 | ep_len=   936 | pg=-0.0080 | vf=895.5955 | ent=13.3641 | clip=0.177 | sps=653
+step=  958464 | ep_rew=-2439.69 | ep_len=   908 | pg=-0.0023 | vf=845.1934 | ent=13.3921 | clip=0.196 | sps=646
+step=  960512 | ep_rew=-2410.62 | ep_len=   908 | pg=-0.0056 | vf=682.9472 | ent=13.4212 | clip=0.177 | sps=638
+step=  962560 | ep_rew=-2459.45 | ep_len=   902 | pg=-0.0032 | vf=707.9500 | ent=13.4474 | clip=0.235 | sps=631
+step=  964608 | ep_rew=-2541.31 | ep_len=   902 | pg=-0.0087 | vf=1062.8553 | ent=13.4706 | clip=0.169 | sps=624
+step=  966656 | ep_rew=-2610.76 | ep_len=   937 | pg=-0.0071 | vf=536.8249 | ent=13.4854 | clip=0.188 | sps=616
+step=  968704 | ep_rew=-2633.53 | ep_len=   937 | pg=-0.0059 | vf=503.4094 | ent=13.5000 | clip=0.172 | sps=610
+step=  970752 | ep_rew=-2700.94 | ep_len=   937 | pg=-0.0023 | vf=825.3473 | ent=13.5353 | clip=0.212 | sps=604
+step=  972800 | ep_rew=-2665.47 | ep_len=   937 | pg=-0.0053 | vf=578.5382 | ent=13.5702 | clip=0.210 | sps=598
+step=  974848 | ep_rew=-2794.52 | ep_len=   966 | pg=-0.0066 | vf=736.3942 | ent=13.5980 | clip=0.181 | sps=592
+step=  976896 | ep_rew=-2723.80 | ep_len=   966 | pg=-0.0069 | vf=526.9630 | ent=13.6263 | clip=0.160 | sps=586
+step=  978944 | ep_rew=-2711.29 | ep_len=   994 | pg=-0.0042 | vf=727.0595 | ent=13.6482 | clip=0.156 | sps=581
+step=  980992 | ep_rew=-2712.24 | ep_len=   994 | pg=-0.0100 | vf=491.6583 | ent=13.6660 | clip=0.149 | sps=575
+step=  983040 | ep_rew=-2688.76 | ep_len=  1000 | pg=-0.0080 | vf=592.5529 | ent=13.6889 | clip=0.185 | sps=570
+step=  985088 | ep_rew=-2546.54 | ep_len=   978 | pg=-0.0071 | vf=438.1052 | ent=13.7214 | clip=0.156 | sps=565
+step=  987136 | ep_rew=-2615.56 | ep_len=   977 | pg=-0.0046 | vf=916.3070 | ent=13.7552 | clip=0.207 | sps=560
+step=  989184 | ep_rew=-2642.51 | ep_len=   977 | pg=-0.0058 | vf=1106.0409 | ent=13.7812 | clip=0.151 | sps=555
+step=  991232 | ep_rew=-2674.72 | ep_len=   965 | pg=-0.0084 | vf=1097.3851 | ent=13.8101 | clip=0.196 | sps=550
+step=  993280 | ep_rew=-2704.90 | ep_len=   965 | pg=-0.0106 | vf=724.4311 | ent=13.8305 | clip=0.175 | sps=546
+step=  995328 | ep_rew=-2700.11 | ep_len=   965 | pg=-0.0087 | vf=543.4132 | ent=13.8489 | clip=0.155 | sps=541
+step=  997376 | ep_rew=-2679.37 | ep_len=   965 | pg=-0.0102 | vf=212.3269 | ent=13.8604 | clip=0.186 | sps=537
+step=  999424 | ep_rew=-2641.09 | ep_len=   965 | pg=-0.0098 | vf=374.7934 | ent=13.8726 | clip=0.165 | sps=532
+step= 1001472 | ep_rew=-2631.42 | ep_len=   965 | pg=-0.0094 | vf=366.9555 | ent=13.8974 | clip=0.179 | sps=528
+  Checkpoint saved: ./checkpoints/gnn_ppo_1001472.pt
+step= 1003520 | ep_rew=-2682.89 | ep_len=   987 | pg=-0.0004 | vf=596.0156 | ent=13.9166 | clip=0.145 | sps=524
+step= 1005568 | ep_rew=-2628.33 | ep_len=   987 | pg=-0.0031 | vf=520.2625 | ent=13.9332 | clip=0.149 | sps=520
+step= 1007616 | ep_rew=-2651.77 | ep_len=   988 | pg=-0.0115 | vf=700.5756 | ent=13.9420 | clip=0.136 | sps=516
+step= 1009664 | ep_rew=-2613.29 | ep_len=   984 | pg=-0.0056 | vf=1112.7952 | ent=13.9605 | clip=0.203 | sps=512
+step= 1011712 | ep_rew=-2638.64 | ep_len=   997 | pg=-0.0104 | vf=725.2357 | ent=13.9821 | clip=0.210 | sps=508
+step= 1013760 | ep_rew=-2473.22 | ep_len=   965 | pg=-0.0094 | vf=317.4939 | ent=13.9977 | clip=0.133 | sps=504
+step= 1015808 | ep_rew=-2494.51 | ep_len=   965 | pg=-0.0054 | vf=475.2898 | ent=14.0078 | clip=0.179 | sps=500
+step= 1017856 | ep_rew=-2580.91 | ep_len=   965 | pg=-0.0054 | vf=576.0162 | ent=14.0183 | clip=0.199 | sps=497
+step= 1019904 | ep_rew=-2584.30 | ep_len=   965 | pg=-0.0106 | vf=305.0749 | ent=14.0355 | clip=0.171 | sps=493
+step= 1021952 | ep_rew=-2510.38 | ep_len=   965 | pg=-0.0039 | vf=290.2328 | ent=14.0489 | clip=0.185 | sps=490
+step= 1024000 | ep_rew=-2505.04 | ep_len=   965 | pg=-0.0071 | vf=619.0255 | ent=14.0668 | clip=0.221 | sps=486
+step= 1026048 | ep_rew=-2401.88 | ep_len=   963 | pg=-0.0069 | vf=323.0271 | ent=14.0901 | clip=0.168 | sps=483
+step= 1028096 | ep_rew=-2418.18 | ep_len=   966 | pg=-0.0065 | vf=663.8283 | ent=14.1091 | clip=0.177 | sps=479
+step= 1030144 | ep_rew=-2302.16 | ep_len=   949 | pg=-0.0069 | vf=820.6262 | ent=14.1299 | clip=0.181 | sps=476
+step= 1032192 | ep_rew=-2336.93 | ep_len=   967 | pg=-0.0055 | vf=708.1630 | ent=14.1529 | clip=0.163 | sps=473
+step= 1034240 | ep_rew=-2510.96 | ep_len=   981 | pg=-0.0074 | vf=1272.7034 | ent=14.1741 | clip=0.161 | sps=470
+step= 1036288 | ep_rew=-2555.98 | ep_len=   981 | pg=-0.0085 | vf=585.8828 | ent=14.1882 | clip=0.164 | sps=467
+step= 1038336 | ep_rew=-2493.78 | ep_len=   981 | pg=-0.0123 | vf=311.8976 | ent=14.1979 | clip=0.166 | sps=463
+step= 1040384 | ep_rew=-2516.60 | ep_len=   981 | pg=-0.0101 | vf=389.0075 | ent=14.2074 | clip=0.187 | sps=460
+step= 1042432 | ep_rew=-2621.63 | ep_len=   980 | pg=-0.0051 | vf=905.4117 | ent=14.2228 | clip=0.165 | sps=457
+step= 1044480 | ep_rew=-2558.82 | ep_len=   980 | pg=-0.0056 | vf=453.6944 | ent=14.2472 | clip=0.181 | sps=455
+step= 1046528 | ep_rew=-2593.08 | ep_len=   981 | pg=-0.0046 | vf=366.4232 | ent=14.2633 | clip=0.175 | sps=452
+step= 1048576 | ep_rew=-2492.23 | ep_len=   981 | pg=-0.0116 | vf=343.1945 | ent=14.2779 | clip=0.149 | sps=449
+step= 1050624 | ep_rew=-2453.72 | ep_len=   998 | pg=-0.0093 | vf=297.2877 | ent=14.2977 | clip=0.162 | sps=446
+  Checkpoint saved: ./checkpoints/gnn_ppo_1050624.pt
+step= 1052672 | ep_rew=-2368.61 | ep_len=   987 | pg=-0.0042 | vf=510.8153 | ent=14.3206 | clip=0.175 | sps=443
+step= 1054720 | ep_rew=-2338.35 | ep_len=   987 | pg=-0.0049 | vf=716.9736 | ent=14.3376 | clip=0.146 | sps=440
+step= 1056768 | ep_rew=-2394.48 | ep_len=   987 | pg=-0.0067 | vf=984.9643 | ent=14.3586 | clip=0.183 | sps=438
+step= 1058816 | ep_rew=-2445.30 | ep_len=   987 | pg=-0.0042 | vf=338.4575 | ent=14.3841 | clip=0.158 | sps=435
+step= 1060864 | ep_rew=-2474.74 | ep_len=   987 | pg=-0.0083 | vf=542.7716 | ent=14.4082 | clip=0.131 | sps=433
+step= 1062912 | ep_rew=-2428.18 | ep_len=   989 | pg=-0.0059 | vf=648.0509 | ent=14.4340 | clip=0.134 | sps=430
+step= 1064960 | ep_rew=-2542.47 | ep_len=   987 | pg=-0.0056 | vf=939.8031 | ent=14.4509 | clip=0.172 | sps=428
+step= 1067008 | ep_rew=-2550.33 | ep_len=   981 | pg=-0.0111 | vf=281.6384 | ent=14.4671 | clip=0.148 | sps=425
+step= 1069056 | ep_rew=-2661.82 | ep_len=   975 | pg=-0.0101 | vf=803.8686 | ent=14.4856 | clip=0.164 | sps=423
+step= 1071104 | ep_rew=-2638.85 | ep_len=   986 | pg=-0.0086 | vf=385.5454 | ent=14.5014 | clip=0.132 | sps=420
+step= 1073152 | ep_rew=-2619.69 | ep_len=   986 | pg=-0.0101 | vf=409.9639 | ent=14.5070 | clip=0.140 | sps=418
+step= 1075200 | ep_rew=-2624.06 | ep_len=   986 | pg=-0.0068 | vf=639.7609 | ent=14.5233 | clip=0.115 | sps=416
+step= 1077248 | ep_rew=-2494.51 | ep_len=   986 | pg= 0.0041 | vf=365.7148 | ent=14.5370 | clip=0.183 | sps=414
+step= 1079296 | ep_rew=-2462.73 | ep_len=   986 | pg=-0.0029 | vf=314.4385 | ent=14.5494 | clip=0.151 | sps=411
+step= 1081344 | ep_rew=-2437.04 | ep_len=   986 | pg=-0.0035 | vf=424.3450 | ent=14.5683 | clip=0.162 | sps=409
+step= 1083392 | ep_rew=-2445.21 | ep_len=   984 | pg=-0.0077 | vf=677.3118 | ent=14.5924 | clip=0.165 | sps=407

@@ -368,31 +368,28 @@ def generate_launch_description():
     # -----------------------------------------------------------------------
 
     gnn_policy_node = TimerAction(
-        period=5.5,   # start after bridge and translator are up
-        actions=[
-            Node(
-                package=PKG,
-                executable="gnn_policy_node",
-                name="gnn_policy_node",
-                output="screen",
-                parameters=[
-                    {
-                        "use_sim_time":          True,
-                        "urdf_path":             urdf_path,
-                        "checkpoint_path":       LaunchConfiguration("gnn_checkpoint"),
-                        "joint_states_topic":    "/joint_states",
-                        "odom_topic":            "/odom",
-                        "goal_pose_topic":       "/goal_pose",
-                        "torque_cmd_topic":      "/cmd_joint_torques",
-                        "control_frequency_hz":  20.0,
-                        "torque_scale":          1.0,
-                        "normalize_obs":         True,
-                    }
-                ],
-                arguments=["--ros-args", "--log-level", LaunchConfiguration("log_level")],
-            )
-        ],
-    )
+    period=5.5,
+    actions=[
+        ExecuteProcess(
+            cmd=[
+                '/mnt/newvolume/Programming/Python/Deep_Learning/Relational_Bias_for_Morphological_Generalization/.venv/bin/python',
+                '/mnt/newvolume/Programming/Python/Deep_Learning/'
+                'Relational_Bias_for_Morphological_Generalization/'
+                'morpho_gnn_robot/gnn_policy_node.py',
+                '--checkpoint',
+                '/mnt/newvolume/Programming/Python/Deep_Learning/'
+                'Relational_Bias_for_Morphological_Generalization/'
+                'morpho_gnn_robot/gnn_ppo_501760.pt',
+                '--urdf',
+                '/mnt/newvolume/Programming/Python/Deep_Learning/'
+                'Relational_Bias_for_Morphological_Generalization/'
+                'morpho_gnn_robot/morpho_ros2_ws/src/morpho_robot/urdf/anymal.urdf',
+                '--device', 'cuda',
+            ],
+            output='screen',
+        )
+    ],
+)
 
     # -----------------------------------------------------------------------
     # 9. Optional RViz2

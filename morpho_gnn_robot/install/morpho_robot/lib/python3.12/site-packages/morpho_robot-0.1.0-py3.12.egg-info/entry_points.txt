@@ -1,0 +1,5 @@
+[console_scripts]
+gnn_policy_node = morpho_robot.gnn_policy_node:main
+llm_planner_node = morpho_robot.llm_planner_node:main
+skill_translator_node = morpho_robot.skill_translator_node:main
+vision_node = morpho_robot.vision_node:main

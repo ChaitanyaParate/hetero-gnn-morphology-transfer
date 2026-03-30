@@ -61,6 +61,7 @@ class Config:
     vf_coef:          float = 0.5
     max_grad_norm:    float = 0.5
     clip_vloss:       bool  = True
+    resume_path: str = None
 
     # GNN
     hidden_dim:  int = 64
@@ -190,6 +191,21 @@ def train(cfg: Config):
 
     optimizer = optim.Adam(agent.parameters(), lr=cfg.learning_rate, eps=1e-5)
 
+    start_global_step = 0
+
+    if cfg.resume_path is not None:
+        print(f"\nLoading checkpoint: {cfg.resume_path}")
+
+        checkpoint = torch.load(cfg.resume_path, map_location=device)
+
+        agent.load_state_dict(checkpoint["agent"])
+        optimizer.load_state_dict(checkpoint["optimizer"])
+
+        start_global_step = checkpoint.get("global_step", 0)
+        episode_rewards = checkpoint.get("episode_rewards", [])
+
+        print(f"Resumed from step {start_global_step}")
+
     print(f"\nAgent parameters: {sum(p.numel() for p in agent.parameters()):,}")
     print(f"Rollout steps: {cfg.num_steps} | Minibatch size: {cfg.minibatch_size}")
     print(f"Total updates: {cfg.total_timesteps // cfg.num_steps}\n")
@@ -203,7 +219,7 @@ def train(cfg: Config):
     obs, _ = env.reset(seed=cfg.seed)
     done   = False
 
-    global_step      = 0
+    global_step      = start_global_step
     update           = 0
     episode_rewards: List[float] = []
     episode_lengths: List[int]   = []
@@ -215,10 +231,12 @@ def train(cfg: Config):
     # ================================================================
     # Main training loop
     # ================================================================
-    while global_step < cfg.total_timesteps:
+    target_timesteps = cfg.total_timesteps
+    while global_step < target_timesteps:
 
         # ---- learning rate annealing ----
-        frac = 1.0 - global_step / cfg.total_timesteps
+        frac = 1.0 - (global_step - start_global_step) / (cfg.total_timesteps - start_global_step)
+        frac = max(frac, 0.0)
         optimizer.param_groups[0]["lr"] = frac * cfg.learning_rate
 
         # --------------------------------------------------------
