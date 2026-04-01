@@ -35,6 +35,40 @@ from gnn_actor_critic   import GNNActorCritic
 
 
 # -----------------------------------------------------------------------
+# Running normalizer (Welford online algorithm)
+# -----------------------------------------------------------------------
+class RunningNorm:
+    """
+    Normalizes inputs to zero mean, unit variance using a running estimate.
+    Used for both observations and rewards.
+
+    WHY this matters: joint_pos in [-1.2, 1.2] and joint_vel in [-20, 20]
+    are on different scales. Without normalization the GNN receives poorly
+    scaled inputs and the critic cannot learn returns in the -5000 range.
+    """
+    def __init__(self, shape, clip: float = 10.0):
+        self.mean  = np.zeros(shape, dtype=np.float64)
+        self.var   = np.ones(shape,  dtype=np.float64)
+        self.count = 1e-4
+        self.clip  = clip
+
+    def update(self, x: np.ndarray):
+        batch_mean = np.mean(x, axis=0) if x.ndim > 1 else x
+        batch_var  = np.var(x,  axis=0) if x.ndim > 1 else np.zeros_like(x)
+        batch_n    = x.shape[0] if x.ndim > 1 else 1
+        delta      = batch_mean - self.mean
+        tot        = self.count + batch_n
+        self.mean += delta * batch_n / tot
+        self.var   = (self.var * self.count + batch_var * batch_n +
+                      delta**2 * self.count * batch_n / tot) / tot
+        self.count = tot
+
+    def normalize(self, x: np.ndarray) -> np.ndarray:
+        return np.clip((x - self.mean) / (np.sqrt(self.var) + 1e-8),
+                       -self.clip, self.clip).astype(np.float32)
+
+
+# -----------------------------------------------------------------------
 # Config
 # -----------------------------------------------------------------------
 @dataclass
@@ -57,8 +91,8 @@ class Config:
     gamma:            float = 0.99
     gae_lambda:       float = 0.95
     clip_coef:        float = 0.2
-    ent_coef:         float = 0.02
-    vf_coef:          float = 0.5
+    ent_coef:         float = 0.00005   # low: let pg signal dominate; entropy is already high at init
+    vf_coef:          float = 1.0
     max_grad_norm:    float = 0.5
     clip_vloss:       bool  = True
     resume_path: str = None
@@ -181,6 +215,15 @@ def train(cfg: Config):
         "Joint ordering mismatch between env and builder. This will corrupt your training."
     )
 
+    # Normalize only joint states (dims 0-30: pos, vel, lin_vel, ang_vel).
+    # Orientation dims 30-37 (quaternion + gravity vector) are NOT normalized.
+    # Quaternions are unit vectors on SO(3) -- applying (q-mean)/std destroys
+    # the geometric meaning and gives the GNN garbage instead of orientation.
+    # Gravity vector is already in [-1,1] by construction.
+    # Joint states need normalization: pos in [-1.2,1.2], vel in [-20,20].
+    OBS_NORM_DIM = 30   # normalize only first 30 dims
+    obs_norm = RunningNorm(shape=(OBS_NORM_DIM,), clip=10.0)
+
     # ---- agent ----
     agent = GNNActorCritic(
         node_dim   = builder.node_dim,
@@ -195,15 +238,15 @@ def train(cfg: Config):
 
     if cfg.resume_path is not None:
         print(f"\nLoading checkpoint: {cfg.resume_path}")
-
-        checkpoint = torch.load(cfg.resume_path, map_location=device)
-
+        checkpoint = torch.load(cfg.resume_path, map_location=device, weights_only=False)
         agent.load_state_dict(checkpoint["agent"])
         optimizer.load_state_dict(checkpoint["optimizer"])
-
         start_global_step = checkpoint.get("global_step", 0)
-        episode_rewards = checkpoint.get("episode_rewards", [])
-
+        episode_rewards   = checkpoint.get("episode_rewards", [])
+        if "obs_norm_mean" in checkpoint:
+            obs_norm.mean  = checkpoint["obs_norm_mean"]
+            obs_norm.var   = checkpoint["obs_norm_var"]
+            obs_norm.count = checkpoint["obs_norm_count"]
         print(f"Resumed from step {start_global_step}")
 
     print(f"\nAgent parameters: {sum(p.numel() for p in agent.parameters()):,}")
@@ -248,10 +291,15 @@ def train(cfg: Config):
             global_step += 1
             ep_length   += 1
 
-            # build graph from current obs
-            joint_pos = obs[:12]
-            joint_vel = obs[12:24]
-            graph     = builder.get_graph(joint_pos, joint_vel).to(device)
+            # Normalize only joint states (dims 0-30); orientation dims are raw
+            obs_norm.update(obs[:OBS_NORM_DIM])
+            obs_n = obs_norm.normalize(obs[:OBS_NORM_DIM])
+
+            joint_pos = obs_n[:12]
+            joint_vel = obs_n[12:24]
+            body_quat = obs[30:34].astype(np.float32)   # unit quaternion -- do not normalize
+            body_grav = obs[34:37].astype(np.float32)   # unit vector -- do not normalize
+            graph     = builder.get_graph(joint_pos, joint_vel, body_quat, body_grav).to(device)
 
             with torch.no_grad():
                 action, logprob, _, value = agent.get_action_and_value(graph)
@@ -262,6 +310,7 @@ def train(cfg: Config):
             done    = terminated or truncated
             ep_reward += reward
 
+            # store raw (unscaled) reward -- critic learns actual return scale
             buffer.store(graph.to("cpu"), action.cpu(), logprob.cpu(),
                          reward, float(done), value.cpu())
 
@@ -274,9 +323,13 @@ def train(cfg: Config):
 
         # next value for GAE bootstrap
         with torch.no_grad():
-            joint_pos   = obs[:12]
-            joint_vel   = obs[12:24]
-            next_graph  = builder.get_graph(joint_pos, joint_vel).to(device)
+            obs_norm.update(obs[:OBS_NORM_DIM])
+            obs_n       = obs_norm.normalize(obs[:OBS_NORM_DIM])
+            joint_pos   = obs_n[:12]
+            joint_vel   = obs_n[12:24]
+            body_quat   = obs[30:34].astype(np.float32)
+            body_grav   = obs[34:37].astype(np.float32)
+            next_graph  = builder.get_graph(joint_pos, joint_vel, body_quat, body_grav).to(device)
             next_value  = agent.get_value(next_graph)
 
         advantages, returns = buffer.compute_advantages(
@@ -394,6 +447,9 @@ def train(cfg: Config):
                 "agent":         agent.state_dict(),
                 "optimizer":     optimizer.state_dict(),
                 "episode_rewards": episode_rewards,
+                "obs_norm_mean": obs_norm.mean,
+                "obs_norm_var":  obs_norm.var,
+                "obs_norm_count": obs_norm.count,
             }, ckpt_path)
             print(f"  Checkpoint saved: {ckpt_path}")
 

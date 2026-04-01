@@ -42,11 +42,13 @@ JOINT_TYPES    = ["revolute", "continuous", "prismatic", "fixed"]
 JOINT_TYPE_MAP = {k: i for i, k in enumerate(JOINT_TYPES)}
 CONTROLLABLE   = {"revolute", "continuous", "prismatic"}
 
-STATIC_DIM  = 11   # type_onehot(4) + axis(3) + limits(4)
-RUNTIME_DIM = 2
-NODE_DIM    = STATIC_DIM + RUNTIME_DIM   # 13
-EDGE_DIM    = 4
+STATIC_DIM      = 11   # type_onehot(4) + axis(3) + limits(4)
+JOINT_RUNTIME   = 2    # joint_pos, joint_vel
+BODY_EXTRA      = 7    # quat(4) + projected_gravity(3)
+RUNTIME_DIM     = JOINT_RUNTIME + BODY_EXTRA   # 9 -- body node gets all; joints get zeros for extra
+NODE_DIM        = STATIC_DIM + RUNTIME_DIM     # 20
 
+EDGE_DIM        = 4
 
 # -----------------------------------------------------------------------
 # URDF parsing helpers
@@ -216,44 +218,52 @@ class URDFGraphBuilder:
 
     def get_graph(
         self,
-        joint_pos: Optional[np.ndarray] = None,
-        joint_vel: Optional[np.ndarray] = None,
+        joint_pos:   Optional[np.ndarray] = None,
+        joint_vel:   Optional[np.ndarray] = None,
+        body_quat:   Optional[np.ndarray] = None,  # (qx,qy,qz,qw) -- 4-dim
+        body_grav:   Optional[np.ndarray] = None,  # projected gravity in body frame -- 3-dim
     ) -> Data:
         """
         Build a PyG Data for one RL timestep.
 
-        Parameters
-        ----------
-        joint_pos : np.ndarray, shape [num_joints], ordered by self.joint_names
-        joint_vel : np.ndarray, shape [num_joints], ordered by self.joint_names
+        joint_pos / joint_vel : shape [num_joints], ordered by self.joint_names
+        body_quat             : base orientation as quaternion (4-dim)
+        body_grav             : gravity vector projected into body frame (3-dim)
 
-        Returns
-        -------
-        Data with:
-            x          : [num_nodes, 12]
-            edge_index : [2, num_edges]
-            edge_attr  : [num_edges, 4]
+        Node runtime layout (9-dim per node):
+          [0]   joint_pos  (0 for body node)
+          [1]   joint_vel  (0 for body node)
+          [2:6] quaternion (actual for body node, zeros for joints)
+          [6:9] gravity    (actual for body node, zeros for joints)
 
-        NOTE: Do NOT normalize joint_pos / joint_vel here.
-              Normalize them in your PPO loop with a running obs_rms normalizer
-              (e.g. CleanRL's obs normalization wrapper). If you normalize here,
-              you cannot transfer to a different morphology with different ranges.
+        Giving orientation ONLY to the body node is standard in legged
+        locomotion. The body node propagates this to limb nodes via message
+        passing, so all joints implicitly learn from orientation context.
         """
-        pos = joint_pos if joint_pos is not None else np.zeros(self.num_joints)
-        vel = joint_vel if joint_vel is not None else np.zeros(self.num_joints)
+        pos  = joint_pos if joint_pos is not None else np.zeros(self.num_joints)
+        vel  = joint_vel if joint_vel is not None else np.zeros(self.num_joints)
+        quat = body_quat if body_quat is not None else np.array([0., 0., 0., 1.], dtype=np.float32)
+        grav = body_grav if body_grav is not None else np.array([0., 0., -1.], dtype=np.float32)
 
-        runtime_joints = torch.tensor(
-            np.stack([pos, vel], axis=1), dtype=torch.float
-        )                                                       # [J, 2]
+        # Joint nodes: [pos, vel, 0, 0, 0, 0, 0, 0, 0]
+        joint_runtime = np.zeros((self.num_joints, RUNTIME_DIM), dtype=np.float32)
+        joint_runtime[:, 0] = pos
+        joint_runtime[:, 1] = vel
+
+        runtime_joints = torch.tensor(joint_runtime, dtype=torch.float)
 
         if self.add_body_node:
+            # Body node: [0, 0, qx, qy, qz, qw, gx, gy, gz]
+            body_runtime = np.zeros((1, RUNTIME_DIM), dtype=np.float32)
+            body_runtime[0, 2:6] = quat
+            body_runtime[0, 6:9] = grav
             runtime = torch.cat(
-                [torch.zeros(1, RUNTIME_DIM), runtime_joints], dim=0
-            )                                                   # [J+1, 2]
+                [torch.tensor(body_runtime, dtype=torch.float), runtime_joints], dim=0
+            )
         else:
             runtime = runtime_joints
 
-        x = torch.cat([self._static_x, runtime], dim=1)        # [num_nodes, 12]
+        x = torch.cat([self._static_x, runtime], dim=1)   # [num_nodes, 20]
 
         return Data(
             x=x,

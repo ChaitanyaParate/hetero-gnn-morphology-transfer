@@ -83,7 +83,7 @@ def generate_launch_description():
 
     world_arg = DeclareLaunchArgument(
         "world",
-        default_value="robot_world.sdf",
+        default_value="warehouse_world.sdf",
         description="SDF world filename inside morpho_robot/worlds/",
     )
 
@@ -187,7 +187,7 @@ def generate_launch_description():
     # -----------------------------------------------------------------------
 
     spawn_robot = TimerAction(
-        period=3.0,
+        period=2.0,
         actions=[
             Node(
                 package="ros_gz_sim",
@@ -199,7 +199,7 @@ def generate_launch_description():
                     "-name",  "robot",
                     "-x",     "0.0",
                     "-y",     "0.0",
-                    "-z",     "0.8",   # spawn slightly above ground
+                    "-z",     "1.0",   # spawn slightly above ground
                 ],
             )
         ],
@@ -368,7 +368,7 @@ def generate_launch_description():
     # -----------------------------------------------------------------------
 
     gnn_policy_node = TimerAction(
-    period=5.5,
+    period=2.5,
     actions=[
         ExecuteProcess(
             cmd=[
@@ -377,9 +377,7 @@ def generate_launch_description():
                 'Relational_Bias_for_Morphological_Generalization/'
                 'morpho_gnn_robot/gnn_policy_node.py',
                 '--checkpoint',
-                '/mnt/newvolume/Programming/Python/Deep_Learning/'
-                'Relational_Bias_for_Morphological_Generalization/'
-                'morpho_gnn_robot/gnn_ppo_501760.pt',
+                '/mnt/newvolume/Programming/Python/Deep_Learning/Relational_Bias_for_Morphological_Generalization/morpho_gnn_robot/gnn_ppo_401408.pt',
                 '--urdf',
                 '/mnt/newvolume/Programming/Python/Deep_Learning/'
                 'Relational_Bias_for_Morphological_Generalization/'
@@ -423,12 +421,12 @@ def generate_launch_description():
             # Nodes -- order matters due to TimerAction delays
             robot_state_publisher,  # immediate
             *gazebo,                 # immediate
-            spawn_robot,            # +3 s
+            spawn_robot,            # +2 s
             gz_bridge,              # +4 s
             vision_node,            # +5 s
             llm_planner_node,       # +5 s
             skill_translator_node,  # +5 s
-            gnn_policy_node,        # +5.5 s
+            gnn_policy_node,        # +2.5 s
             rviz,                   # conditional
         ]
     )

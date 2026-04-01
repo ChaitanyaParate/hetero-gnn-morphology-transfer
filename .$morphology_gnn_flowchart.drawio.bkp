@@ -71,7 +71,7 @@
           <mxGeometry height="65" width="230" x="-782.5" y="1304" as="geometry" />
         </mxCell>
         <mxCell id="t_mlp_note" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#6a00ff;strokeColor=#3700CC;fontSize=10;fontStyle=2;fontColor=#ffffff;" value="NOTE: MLP Baseline trained in parallel&lt;br&gt;Same env, SB3 PPO, MlpPolicy&lt;br&gt;Flat obs vector (12-dim for quadruped)&lt;br&gt;Also 5 seeds, 500k steps" vertex="1">
-          <mxGeometry height="70" width="230" x="-1180" y="1719" as="geometry" />
+          <mxGeometry height="70" width="230" x="-1300" y="1440" as="geometry" />
         </mxCell>
         <mxCell id="ta1" edge="1" parent="1" source="t1" style="edgeStyle=orthogonalEdgeStyle;" target="t2">
           <mxGeometry relative="1" as="geometry" />

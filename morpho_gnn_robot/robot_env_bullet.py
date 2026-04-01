@@ -58,13 +58,12 @@ class RobotEnvBullet(gym.Env):
 
     metadata = {"render_modes": ["human", "direct"]}
 
-    # Reward weights -- tune these if locomotion doesn't emerge
-    W_FORWARD    =  2.0    # forward velocity reward
-    W_TORQUE     =  0.001  # penalty for large torques (energy efficiency)
-    W_ANG_VEL    =  0.1    # penalty for large angular velocity (stability)
-    W_HEIGHT     =  0.5    # penalty when base height drops (crouching penalty)
-    ALIVE_BONUS  =  0.1    # small reward per surviving step
-    FALL_PENALTY = 50.0    # one-time penalty on episode termination by falling
+    # Reward weights
+    # NOTE: torque cost removed -- with KP=150 torques reach 75 Nm per joint,
+    # making τ² sum ~67,500 per step. At 1e-4 that is -6.75 per step, -6750
+    # over 1000 steps. The agent learns to do nothing to minimize torque cost
+    # rather than walk. Remove it until locomotion emerges; add back later.
+    FALL_PENALTY = 10.0    # one-time penalty, small enough not to dominate
 
     def __init__(
         self,
@@ -82,7 +81,17 @@ class RobotEnvBullet(gym.Env):
         # Parse URDF once to get joint metadata
         self._parse_urdf()
 
-        self.obs_dim    = 12 + 12 + 3 + 3   # = 30
+        # Observation layout (36-dim):
+        #   [0:12]  joint positions   (rad)
+        #   [12:24] joint velocities  (rad/s)
+        #   [24:27] base linear velocity (m/s)
+        #   [27:30] base angular velocity (rad/s)
+        #   [30:34] base orientation as quaternion (qx, qy, qz, qw)
+        #   [34:37] projected gravity vector (body frame)
+        # Quaternion + gravity vector together give the policy unambiguous
+        # information about whether it is upright. Without this, the policy
+        # cannot observe roll/pitch and cannot learn to stand or recover.
+        self.obs_dim    = 12 + 12 + 3 + 3 + 4 + 3   # = 37
         self.action_dim = len(self.joint_names)
 
         self.observation_space = spaces.Box(
@@ -245,13 +254,25 @@ class RobotEnvBullet(gym.Env):
         """
         action : [num_joints] in [-1, 1]
                  Interpreted as offsets from nominal standing pose (radians).
-                 Scaled by 0.5 rad so max deviation = ±0.5 rad per joint.
+                 Scaled by 0.1 rad so max deviation = ±0.1 rad per joint.
                  PD controller converts target positions to torques.
         """
         action = np.clip(action, -1.0, 1.0)
 
         # target position = nominal pose + scaled action offset
-        target_pos = self._nominal_pos + action * 0.5
+        # Action scale: 0.1 rad max deviation from nominal.
+        # At 0.5 rad: random policy (sigma=0.37) generates 27Nm unintended
+        # forces per joint, immediately destabilising the body before the
+        # policy has any chance to learn. At 0.1 rad: max unintended force
+        # is 5.5Nm -- robot stays near nominal during random exploration.
+        # action_scale = 0.35 rad: sufficient range for trot gait on ANYmal.
+        # HFE joint needs ~0.3-0.4 rad swing range for a proper step.
+        # Previously 0.1 rad was needed because policy had no orientation obs
+        # and random large actions caused immediate falls.
+        # Now orientation (gravity vector) is in obs so the policy can
+        # stabilize while learning to walk. 0.35 gives locomotion range
+        # without producing joint limit violations.
+        target_pos = self._nominal_pos + action * 0.35
 
         smooth_penalty = np.sum((action - self.prev_action) ** 2)
         self.prev_action = action.copy()
@@ -276,70 +297,88 @@ class RobotEnvBullet(gym.Env):
             p.stepSimulation()
 
         self._step_count += 1
-        obs    = self._get_obs()
-        reward = self._compute_reward(obs, torques, smooth_penalty)
 
-        base_height = p.getBasePositionAndOrientation(self._robot_id)[0][2]
-        self._fell  = base_height < 0.20
+        # --- observation ---
+        obs = self._get_obs()
 
-        terminated = self._fell
+        # --- base state ---
+        base_pos, base_orn = p.getBasePositionAndOrientation(self._robot_id)
+        base_height = base_pos[2]
+        roll, pitch, _ = p.getEulerFromQuaternion(base_orn)
+
+        # --- reward FIRST (mandatory) ---
+        reward = self._compute_reward(
+            obs,
+            torques,
+            smooth_penalty,
+            base_height=base_height
+        )
+
+        # --- termination ---
+        self._fell = base_height < 0.20
+        bad_orientation = abs(roll) > 0.8 or abs(pitch) > 0.8
+
+        terminated = self._fell or bad_orientation
         truncated  = self._step_count >= self.max_episode_steps
 
+        # --- penalty AFTER reward exists ---
         if terminated:
             reward -= self.FALL_PENALTY
 
         info = {
             "base_height": base_height,
-            "step":        self._step_count,
-            "fell":        self._fell,
+            "step": self._step_count,
+            "fell": self._fell,
         }
+
         return obs, reward, terminated, truncated, info
 
     # ------------------------------------------------------------------
     def _get_obs(self) -> np.ndarray:
-        """Build flat 30-dim observation."""
-        # Joint states
-        states   = p.getJointStates(self._robot_id, self._pybullet_indices.tolist())
+        """Build 37-dim observation including orientation."""
+        states    = p.getJointStates(self._robot_id, self._pybullet_indices.tolist())
         joint_pos = np.array([s[0] for s in states], dtype=np.float32)
         joint_vel = np.array([s[1] for s in states], dtype=np.float32)
 
-        # Base velocity
         lin_vel, ang_vel = p.getBaseVelocity(self._robot_id)
         lin_vel = np.array(lin_vel, dtype=np.float32)
         ang_vel = np.array(ang_vel, dtype=np.float32)
 
-        return np.concatenate([joint_pos, joint_vel, lin_vel, ang_vel])
+        _, base_orn = p.getBasePositionAndOrientation(self._robot_id)
+        quat = np.array(base_orn, dtype=np.float32)   # (qx, qy, qz, qw)
+
+        # Projected gravity in body frame: tells the policy which way is "down"
+        # relative to its own orientation. This is the clearest standing signal.
+        # gravity_world = [0, 0, -1] (normalized)
+        # rot_matrix maps world->body, so gravity_body = R^T * [0,0,-1]
+        rot_mat = np.array(p.getMatrixFromQuaternion(base_orn), dtype=np.float32).reshape(3, 3)
+        gravity_body = rot_mat.T @ np.array([0.0, 0.0, -1.0], dtype=np.float32)
+
+        return np.concatenate([joint_pos, joint_vel, lin_vel, ang_vel, quat, gravity_body])
 
     # ------------------------------------------------------------------
-    def _compute_reward(self, obs: np.ndarray, torques: np.ndarray, smooth_penalty: float) -> float:
+    def _compute_reward(self, obs: np.ndarray, torques: np.ndarray, smooth_penalty: float, base_height: float) -> float:
         lin_vel  = obs[24:27]
-        ang_vel  = obs[27:30]
 
         base_pos, base_orn = p.getBasePositionAndOrientation(self._robot_id)
-        roll, pitch, yaw = p.getEulerFromQuaternion(base_orn)
+        roll, pitch, _     = p.getEulerFromQuaternion(base_orn)
 
-        forward_vel = lin_vel[self.forward_axis]
-        lateral_vel = lin_vel[1 - self.forward_axis]
+        forward_vel = float(lin_vel[self.forward_axis])
+        lateral_vel = float(lin_vel[1 - self.forward_axis])
 
-        torque_cost = np.sum(torques ** 2)
-        ang_penalty = np.sum(ang_vel ** 2)
-
-        orientation_penalty = roll**2 + pitch**2
-        lateral_penalty     = lateral_vel**2
-
-        height = base_pos[2]
-        height_penalty = max(0.0, 0.45 - height)
-
+        # NO alive bonus -- it creates a local optimum where the policy learns
+        # to stand still and collect it rather than walk. The ONLY path to
+        # positive reward is forward_vel > 0.
+        target_vel = 0.6
+        vel_error = (forward_vel - target_vel)
         r = (
-            1.0   * forward_vel           # +1 per m/s, typically 0-2
-            - 1e-4 * torque_cost          # τ² sum ≈ 10k at 30Nm → -1.0
-            - 0.005 * ang_penalty         # ω² sum ≈ 100 at 10rad/s → -0.5
-            - 0.5  * orientation_penalty  # roll²+pitch² ≈ 0.1 standing → -0.05
-            - 0.1  * lateral_penalty      # lateral_vel² small → -0.05
-            - 1.0  * height_penalty       # 0 to 0.45 → 0 to -0.45
-            - 0.01 * smooth_penalty       # Δaction² sum ≈ 4 → -0.04
-            + 0.5                         # alive bonus
+            10.0 * np.exp(-vel_error**2)   # ONLY reward forward
+            - 1.0 * abs(lateral_vel)
+            - 2.0 * (roll**2 + pitch**2)
+            - 2.0 * max(0.0, 0.45 - base_height)
+            - 0.02 * smooth_penalty
         )
+
         return float(r)
 
     # ------------------------------------------------------------------

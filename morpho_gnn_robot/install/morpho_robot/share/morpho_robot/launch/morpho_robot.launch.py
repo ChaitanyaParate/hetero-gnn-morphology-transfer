@@ -83,7 +83,7 @@ def generate_launch_description():
 
     world_arg = DeclareLaunchArgument(
         "world",
-        default_value="robot_world.sdf",
+        default_value="warehouse_world.sdf",
         description="SDF world filename inside morpho_robot/worlds/",
     )
 
@@ -187,7 +187,7 @@ def generate_launch_description():
     # -----------------------------------------------------------------------
 
     spawn_robot = TimerAction(
-        period=3.0,
+        period=2.0,
         actions=[
             Node(
                 package="ros_gz_sim",
@@ -199,7 +199,7 @@ def generate_launch_description():
                     "-name",  "robot",
                     "-x",     "0.0",
                     "-y",     "0.0",
-                    "-z",     "0.8",   # spawn slightly above ground
+                    "-z",     "1.0",   # spawn slightly above ground
                 ],
             )
         ],
@@ -368,31 +368,26 @@ def generate_launch_description():
     # -----------------------------------------------------------------------
 
     gnn_policy_node = TimerAction(
-        period=5.5,   # start after bridge and translator are up
-        actions=[
-            Node(
-                package=PKG,
-                executable="gnn_policy_node",
-                name="gnn_policy_node",
-                output="screen",
-                parameters=[
-                    {
-                        "use_sim_time":          True,
-                        "urdf_path":             urdf_path,
-                        "checkpoint_path":       LaunchConfiguration("gnn_checkpoint"),
-                        "joint_states_topic":    "/joint_states",
-                        "odom_topic":            "/odom",
-                        "goal_pose_topic":       "/goal_pose",
-                        "torque_cmd_topic":      "/cmd_joint_torques",
-                        "control_frequency_hz":  20.0,
-                        "torque_scale":          1.0,
-                        "normalize_obs":         True,
-                    }
-                ],
-                arguments=["--ros-args", "--log-level", LaunchConfiguration("log_level")],
-            )
-        ],
-    )
+    period=2.5,
+    actions=[
+        ExecuteProcess(
+            cmd=[
+                '/mnt/newvolume/Programming/Python/Deep_Learning/Relational_Bias_for_Morphological_Generalization/.venv/bin/python',
+                '/mnt/newvolume/Programming/Python/Deep_Learning/'
+                'Relational_Bias_for_Morphological_Generalization/'
+                'morpho_gnn_robot/gnn_policy_node.py',
+                '--checkpoint',
+                '/mnt/newvolume/Programming/Python/Deep_Learning/Relational_Bias_for_Morphological_Generalization/morpho_gnn_robot/gnn_ppo_401408.pt',
+                '--urdf',
+                '/mnt/newvolume/Programming/Python/Deep_Learning/'
+                'Relational_Bias_for_Morphological_Generalization/'
+                'morpho_gnn_robot/morpho_ros2_ws/src/morpho_robot/urdf/anymal.urdf',
+                '--device', 'cuda',
+            ],
+            output='screen',
+        )
+    ],
+)
 
     # -----------------------------------------------------------------------
     # 9. Optional RViz2
@@ -426,12 +421,12 @@ def generate_launch_description():
             # Nodes -- order matters due to TimerAction delays
             robot_state_publisher,  # immediate
             *gazebo,                 # immediate
-            spawn_robot,            # +3 s
+            spawn_robot,            # +2 s
             gz_bridge,              # +4 s
             vision_node,            # +5 s
             llm_planner_node,       # +5 s
             skill_translator_node,  # +5 s
-            #gnn_policy_node,        # +5.5 s
+            gnn_policy_node,        # +2.5 s
             rviz,                   # conditional
         ]
     )

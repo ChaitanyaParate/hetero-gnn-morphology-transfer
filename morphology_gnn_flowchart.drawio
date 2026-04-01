@@ -1,6 +1,6 @@
 <mxfile host="Electron" agent="Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) draw.io/29.6.6 Chrome/144.0.7559.236 Electron/40.8.4 Safari/537.36" version="29.6.6">
   <diagram id="xomMxANQSnD7srzQpO5C" name="Page-1">
-    <mxGraphModel dx="4823" dy="1849" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1654" pageHeight="1169" math="0" shadow="0">
+    <mxGraphModel dx="4506" dy="1664" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1654" pageHeight="1169" math="0" shadow="0">
       <root>
         <mxCell id="0" />
         <mxCell id="1" parent="0" />
@@ -69,9 +69,6 @@
         </mxCell>
         <mxCell id="t9" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f0a30a;strokeColor=#BD7000;fontSize=11;fontColor=#000000;" value="&lt;b&gt;Trained GNN Checkpoint (.pt)&lt;/b&gt;&lt;br&gt;5 seeds saved — download from Kaggle&lt;br&gt;Used in: runtime + evaluation" vertex="1">
           <mxGeometry height="65" width="230" x="-782.5" y="1304" as="geometry" />
-        </mxCell>
-        <mxCell id="t_mlp_note" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#6a00ff;strokeColor=#3700CC;fontSize=10;fontStyle=2;fontColor=#ffffff;" value="NOTE: MLP Baseline trained in parallel&lt;br&gt;Same env, SB3 PPO, MlpPolicy&lt;br&gt;Flat obs vector (12-dim for quadruped)&lt;br&gt;Also 5 seeds, 500k steps" vertex="1">
-          <mxGeometry height="70" width="230" x="-1300" y="1440" as="geometry" />
         </mxCell>
         <mxCell id="ta1" edge="1" parent="1" source="t1" style="edgeStyle=orthogonalEdgeStyle;" target="t2">
           <mxGeometry relative="1" as="geometry" />

@@ -158,7 +158,7 @@ class GNNActorCritic(nn.Module):
         B        = batch.max().item() + 1
         mean     = mean.view(B, self.num_joints)       # [B, J]
 
-        std  = self.log_std.exp().clamp(1e-4, 1.0)    # [J]
+        std  = self.log_std.exp().clamp(1e-4, 0.15)    # [J]
         std  = std.unsqueeze(0).expand_as(mean)        # [B, J]
         dist = Normal(mean, std)
 
