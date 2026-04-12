@@ -799,6 +799,7 @@
         <robot_base_frame>base</robot_base_frame>
         <odom_topic>/model/robot/odometry</odom_topic>
         <publish_tf>true</publish_tf>
+        <update_rate>200</update_rate>
         </plugin>
 
         <plugin filename="gz-sim-joint-position-controller-system"

@@ -66,7 +66,7 @@ class RobotEnvBullet(gym.Env):
     # Reward weights
     # NOTE: torque cost is small but non-zero to regularize energy without
     # collapsing to a stand-still policy.
-    FALL_PENALTY = 80.0
+    FALL_PENALTY = 250.0  # Reduced to encourage exploration/risk-taking during recovery
 
     def __init__(
         self,
@@ -105,6 +105,12 @@ class RobotEnvBullet(gym.Env):
             low=-1.0, high=1.0,
             shape=(self.action_dim,), dtype=np.float32
         )
+
+        # Domain Randomization & Robustness params
+        self.obs_noise_scale = 0.01  # 1% noise on joint pos
+        self.vel_noise_scale = 0.02  # 2% noise on velocities
+        self.action_lag_prob = 0.5   # 50% chance of a 1-step action delay
+        self.action_history = []
 
         
 
@@ -229,7 +235,7 @@ class RobotEnvBullet(gym.Env):
         p.resetSimulation()
         self._robot_id = None   # resetSimulation already removed all bodies
         p.setGravity(0, 0, -9.81)
-        p.setTimeStep(1.0 / 240.0)
+        p.setTimeStep(1.0 / 400.0) # Higher freq for 200Hz control (dt=2/400=5ms)
         p.setPhysicsEngineParameter(numSolverIterations=50, numSubSteps=1)
         plane_id = p.loadURDF("plane.urdf")
         p.changeDynamics(
@@ -260,6 +266,9 @@ class RobotEnvBullet(gym.Env):
         self._fell       = False
         self.prev_action = np.zeros(self.action_dim)
         self._prev_pos   = np.array(p.getBasePositionAndOrientation(self._robot_id)[0])
+        
+        # Buffer for action lag simulation
+        self.action_history = [np.zeros(12, dtype=np.float32)] * 2
 
         obs = self._get_obs()
         return obs, {}
@@ -287,8 +296,19 @@ class RobotEnvBullet(gym.Env):
         # Now orientation (gravity vector) is in obs so the policy can
         # stabilize while learning to walk. 0.35 gives locomotion range
         # without producing joint limit violations.
+        # 1. Action Lag Simulation (Simulate 1-step network delay)
+        # Randomly choose between current and previous action to simulate jitter
+        self.action_history.append(action.copy())
+        if len(self.action_history) > 3:
+            self.action_history.pop(0)
+
+        if np.random.rand() < self.action_lag_prob:
+            effective_action = self.action_history[-2] # Uses previous action
+        else:
+            effective_action = action
+
         action_scale = 0.80
-        target_pos = self._nominal_pos + action * action_scale
+        target_pos = self._nominal_pos + effective_action * action_scale
 
         smooth_penalty = np.sum((action - self.prev_action) ** 2)
         self.prev_action = action.copy()
@@ -376,7 +396,15 @@ class RobotEnvBullet(gym.Env):
         # Projected gravity in body frame
         gravity_body = rot_mat.T @ np.array([0.0, 0.0, -1.0], dtype=np.float32)
 
-        return np.concatenate([joint_pos, joint_vel, lin_vel_body, ang_vel_body, quat, gravity_body])
+        obs = np.concatenate([joint_pos, joint_vel, lin_vel_body, ang_vel_body, quat, gravity_body])
+        
+        # Add Domain Randomization Noise
+        noise = np.zeros_like(obs)
+        noise[:12]  = np.random.normal(0, self.obs_noise_scale, 12)  # Joint pos noise
+        noise[12:24] = np.random.normal(0, self.vel_noise_scale, 12) # Joint vel noise
+        noise[24:30] = np.random.normal(0, 0.01, 6)                  # Base vel noise
+        
+        return (obs + noise).astype(np.float32)
 
     # ------------------------------------------------------------------
     def _compute_reward(self, obs, torques, smooth_penalty, base_height):
@@ -388,35 +416,32 @@ class RobotEnvBullet(gym.Env):
         lateral_vel = float(lin_vel[1 - self.forward_axis])
         yaw_rate    = float(obs[29])
 
-        # Stronger forward-drive reward with a quadratic boost for speed.
-        fwd_pos = max(forward_vel, 0.0)
-        r_vel = float(
-            np.clip(120.0 * forward_vel + 120.0 * (fwd_pos ** 2) + 30.0 * abs(forward_vel), -10.0, 180.0)
+        # 1. Forward Speed Reward (Continuous Linear)
+        r_vel = 300.0 * forward_vel
+        
+        # 2. Base Height Reward (Gaussian bonus for nominal height 0.45m)
+        target_height = 0.45
+        height_error = base_height - target_height
+        r_height = 3.0 * np.exp(-15.0 * (height_error**2))
+        
+        # 3. Stability Penalties
+        r_stability = (
+            -1.0 * (roll**2 + pitch**2)     # Upright stance
+            -2.0 * abs(lateral_vel)         # Heading alignment
+            -1.0 * (yaw_rate ** 2)          # Yaw stability
         )
-
-        # Scale penalties with speed so early exploration is not over-penalized.
-        speed_gate = float(np.clip(abs(forward_vel) / 0.6, 0.0, 1.0))
-        penalty_scale = 0.10 + 0.90 * speed_gate
-
-        upright_bonus = 0.05 * np.exp(-2.0 * (roll**2 + pitch**2))
-        height_bonus = 0.0
-        speed_bonus = 60.0 * max(0.0, forward_vel - 0.03)
-
-        torque_pen = 0.0005 * (0.02 + 0.98 * speed_gate) * float(np.sum(torques ** 2))
-
-        r = (
-            r_vel
-            - penalty_scale * 0.20 * abs(lateral_vel)
-            - penalty_scale * 0.15 * (yaw_rate ** 2)
-            - penalty_scale * 0.20 * (roll**2 + pitch**2)
-            - penalty_scale * 0.15 * max(0.0, 0.50 - base_height)
-            - penalty_scale * 0.0005 * smooth_penalty
-            - torque_pen
-            + upright_bonus
-            + height_bonus
-            + speed_bonus
-        )
-        return float(r)
+        
+        # 4. Efficiency & Smoothing
+        torque_pen = -0.0005 * float(np.sum(torques ** 2))
+        smooth_pen = -0.001 * smooth_penalty
+        
+        # 5. Stagnation Break (Directly punish standing still)
+        r_moving = -15.0 if abs(forward_vel) < 0.05 else 0.0
+        
+        r = r_vel + r_height + r_stability + torque_pen + smooth_pen + r_moving
+        
+        # Prevent extremely negative rewards from glitching
+        return float(np.clip(r, -50.0, 300.0))
 
     # ------------------------------------------------------------------
     def close(self):

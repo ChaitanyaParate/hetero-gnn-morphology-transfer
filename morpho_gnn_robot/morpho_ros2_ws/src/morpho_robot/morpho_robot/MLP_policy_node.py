@@ -38,14 +38,14 @@ except ImportError as exc:
     raise SystemExit(1)
 
 
-CONTROL_HZ = 120
+CONTROL_HZ = 200
 POSITION_SCALE = 0.80  # must match action_scale in robot_env_bullet.py
 JOINT_COMMAND_FMT = "/model/robot/joint/{}/cmd_pos"
 HIDDEN_DIM = 256
 OBS_NORM_DIM = 30
-ACTION_SMOOTH_ALPHA = 1.0
-MAX_CMD_STEP = 1.0
-STARTUP_HOLD_TICKS = 0
+ACTION_SMOOTH_ALPHA = 0.75  # Reduced smoothing for faster response
+MAX_CMD_STEP = 0.25        # Relaxed step limit to allow standing up quickly
+STARTUP_HOLD_TICKS = 200       # Hold nominal pose for 1 second to settle
 
 NOMINAL_POSE_PER_JOINT = {
     "LF_HAA": 0.0,  "LF_HFE": 0.6,  "LF_KFE": -1.2,
@@ -157,7 +157,11 @@ class MLPPolicyNode(Node):
             [NOMINAL_POSE_PER_JOINT.get(j, 0.0) for j in self.builder.joint_names],
             dtype=np.float32,
         )
+        self._ticks = 0
         self._startup_hold_ticks = STARTUP_HOLD_TICKS
+        self._policy_activated = False
+        self._last_telemetry_time = self.get_clock().now()
+        
         self._joint_ready = False
         self._odom_ready = False
         self._cmd_initialized = False
@@ -363,6 +367,37 @@ class MLPPolicyNode(Node):
 
         gravity_body = rot_mat.T @ np.array([0.0, 0.0, -1.0], dtype=np.float32)
 
+        # 3. Startup & Sensor Blocking Logic
+        if not self._odom_ready or not self._joint_ready:
+            # Still waiting for sensors. Hold nominal pose.
+            for jname in self.builder.joint_names:
+                if jname in self._joint_pubs:
+                    self._joint_pubs[jname].publish(Float64(data=NOMINAL_POSE_PER_JOINT[jname]))
+            return
+
+        if self._ticks < STARTUP_HOLD_TICKS:
+            # Hold nominal pose but sensors ARE ready. Just settling on ground.
+            for jname in self.builder.joint_names:
+                if jname in self._joint_pubs:
+                    self._joint_pubs[jname].publish(Float64(data=NOMINAL_POSE_PER_JOINT[jname]))
+            self._ticks += 1
+            return
+
+        # 4. Telemetry (1Hz)
+        now = self.get_clock().now()
+        if (now - self._last_telemetry_time).nanoseconds > 1e9:
+            # gravity_body[0] is roughly -sin(pitch). 
+            # If robot tilts forward (nose down), gravity_body[0] becomes positive.
+            pitch_est = -gravity_body[0]
+            self.get_logger().info(
+                f"Telemetery | Pitch: {pitch_est:.2f} | FwdVel: {base_lin_vel[0]:.2f} | Ticks: {self._ticks}"
+            )
+            self._last_telemetry_time = now
+
+        # 5. Neural Network Inference
+        obs = np.concatenate([pos, vel, base_lin_vel, base_ang_vel, base_quat, gravity_body]).astype(np.float32)
+
+        # 4. Neural Network Inference
         obs = np.concatenate([pos, vel, base_lin_vel, base_ang_vel, base_quat, gravity_body]).astype(np.float32)
         obs_n = self._normalize_policy_obs(obs)
         obs_t = torch.tensor(obs_n, dtype=torch.float32, device=self.device).unsqueeze(0)
@@ -381,9 +416,16 @@ class MLPPolicyNode(Node):
         action_np = (1.0 - ACTION_SMOOTH_ALPHA) * self._prev_action + ACTION_SMOOTH_ALPHA * action_np
         self._prev_action = action_np.copy()
 
+        # 6. Safety Ramp: gradually allow larger movements
+        # During the first 400 ticks (2s) of policy activation, clamp the action magnitude
+        ramp_ticks = 400
+        policy_ticks = self._ticks - STARTUP_HOLD_TICKS
+        ramp_factor = min(1.0, float(policy_ticks) / ramp_ticks)
+
         cmd_pos = []
         for i, jname in enumerate(self.builder.joint_names):
-            target = NOMINAL_POSE_PER_JOINT.get(jname, 0.0) + float(action_np[i] * POSITION_SCALE)
+            # target = nominal + scaled action * ramp
+            target = NOMINAL_POSE_PER_JOINT.get(jname, 0.0) + float(action_np[i] * POSITION_SCALE * ramp_factor)
             target = float(np.clip(target, self._joint_lower[i], self._joint_upper[i]))
             delta = target - float(self._prev_cmd_pos[i])
             delta = float(np.clip(delta, -MAX_CMD_STEP, MAX_CMD_STEP))

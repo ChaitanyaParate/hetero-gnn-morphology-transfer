@@ -98,7 +98,7 @@ def generate_launch_description():
 
     mlp_checkpoint_arg = DeclareLaunchArgument(
         "mlp_checkpoint",
-        default_value="/mnt/newvolume/Programming/Python/Deep_Learning/Relational_Bias_for_Morphological_Generalization/morpho_gnn_robot/Training_MLP/checkpoints/mlp_ppo_630784.pt",
+        default_value="/mnt/newvolume/Programming/Python/Deep_Learning/Relational_Bias_for_Morphological_Generalization/morpho_gnn_robot/Training_MLP/checkpoints/mlp_ppo_5533696.pt",
         description="Absolute path to .pt MLP checkpoint. Empty = random init.",
     )
 
@@ -124,8 +124,7 @@ def generate_launch_description():
         "odom_in_base_frame",
         default_value="1",
         description="Treat /odom twist as base frame (1) or world frame (0). "
-                    "Set to 1 for models trained with body-frame velocities (correct). "
-                    "Set to 0 only for legacy checkpoints trained with world-frame velocities.",
+                    "Set to 0 because Gazebo /odom twist is in world frame, and we need the node to rotate it to body frame for the policy.",
     )
 
     # -----------------------------------------------------------------------

@@ -58,21 +58,21 @@ class Config:
     max_episode_steps: int = 1000
 
     seed: int = 0
-    total_timesteps: int = 5_000_000
-    mlp_learning_rate: float = 3e-4
-    actor_learning_rate: float = 5e-4
-    critic_learning_rate: float = 5e-4
+    total_timesteps: int = 12_000_000
+    mlp_learning_rate: float = 6.8e-4
+    actor_learning_rate: float = 4.5e-4
+    critic_learning_rate: float = 4.5e-4
     num_steps: int = 4096
     num_minibatches: int = 4
     update_epochs: int = 6
     gamma: float = 0.99
     gae_lambda: float = 0.95
     clip_coef: float = 0.15
-    ent_coef: float = 0.0
+    ent_coef: float = 0.005
     vf_coef: float = 0.5
     max_grad_norm: float = 0.5
     clip_vloss: bool = True
-    target_kl: float = 0.02
+    target_kl: float = 0.015
     resume_path: str = None
     resume_optimizer: bool = True
 
@@ -424,7 +424,13 @@ def train(cfg: Config):
             print(f"  Checkpoint saved: {ckpt_path}")
 
     final_path = os.path.join(cfg.checkpoint_dir, "mlp_ppo_final.pt")
-    torch.save({"global_step": global_step, "agent": agent.state_dict()}, final_path)
+    torch.save({
+        "global_step": global_step,
+        "agent": agent.state_dict(),
+        "obs_norm_mean": obs_norm.mean,
+        "obs_norm_var": obs_norm.var,
+        "obs_norm_count": obs_norm.count,
+    }, final_path)
     print(f"\nTraining complete. Final checkpoint: {final_path}")
 
     env.close()

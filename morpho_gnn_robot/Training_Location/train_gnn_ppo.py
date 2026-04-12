@@ -85,20 +85,20 @@ class Config:
     # Training
     seed:             int   = 0
     total_timesteps:  int   = 5_000_000
-    gnn_learning_rate:    float = 3e-4
-    actor_learning_rate:  float = 5e-4
-    critic_learning_rate: float = 1e-3
+    gnn_learning_rate:    float = 1e-4
+    actor_learning_rate:  float = 1e-4
+    critic_learning_rate: float = 2e-4
     num_steps:        int   = 4096    # rollout length before each update
     num_minibatches:  int   = 4
     update_epochs:    int   = 8
     gamma:            float = 0.99
     gae_lambda:       float = 0.95
     clip_coef:        float = 0.20
-    ent_coef:         float = 0.0002  # lower entropy for steadier gait
+    ent_coef:         float = 0.005  # slightly higher entropy for steady exploration
     vf_coef:          float = 1.0
     max_grad_norm:    float = 0.5
     clip_vloss:       bool  = False
-    target_kl:        float = 0.03
+    target_kl:        float = 0.015
     resume_path: str = None
 
     # GNN
