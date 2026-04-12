@@ -140,6 +140,7 @@ class MLPPolicyNode(Node):
         self._obs_norm_count = 1.0
         self._norm_available = False
 
+
         self._joint_lower, self._joint_upper = self._load_joint_limits(urdf_path)
 
         self.model = self._load_checkpoint(checkpoint_path)
@@ -178,6 +179,15 @@ class MLPPolicyNode(Node):
         self.get_logger().info(
             f"Ready. Publishing {self.builder.num_joints} joint commands to '{JOINT_COMMAND_FMT}' at 200 Hz."
         )
+
+    def _get_rotation_matrix(self, q):
+        """Standard quat(x,y,z,w) to 3x3 rotation matrix."""
+        x, y, z, w = q
+        return np.array([
+            [1 - 2*(y**2 + z**2), 2*(x*y - z*w), 2*(x*z + y*w)],
+            [2*(x*y + z*w), 1 - 2*(x**2 + z**2), 2*(y*z - x*w)],
+            [2*(x*z - y*w), 2*(y*z + x*w), 1 - 2*(x**2 + y**2)]
+        ], dtype=np.float32)
 
     def _load_joint_limits(self, urdf_path: str):
         lower = np.full(self.builder.num_joints, -np.inf, dtype=np.float32)
@@ -363,19 +373,10 @@ class MLPPolicyNode(Node):
                 self._joint_pubs[jname].publish(msg)
             return
 
-        rot_mat = np.array(
-            [
-                [1 - 2 * (base_quat[1] ** 2 + base_quat[2] ** 2), 2 * (base_quat[0] * base_quat[1] - base_quat[2] * base_quat[3]), 2 * (base_quat[0] * base_quat[2] + base_quat[1] * base_quat[3])],
-                [2 * (base_quat[0] * base_quat[1] + base_quat[2] * base_quat[3]), 1 - 2 * (base_quat[0] ** 2 + base_quat[2] ** 2), 2 * (base_quat[1] * base_quat[2] - base_quat[0] * base_quat[3])],
-                [2 * (base_quat[0] * base_quat[2] - base_quat[1] * base_quat[3]), 2 * (base_quat[1] * base_quat[2] + base_quat[0] * base_quat[3]), 1 - 2 * (base_quat[0] ** 2 + base_quat[1] ** 2)],
-            ],
-            dtype=np.float32,
-        )
-
-        if not self._odom_in_base_frame:
-            base_lin_vel = rot_mat.T @ base_lin_vel
-            base_ang_vel = rot_mat.T @ base_ang_vel
-
+        # ALWAYS rotate world-frame vels into body frame for policy invariants.
+        rot_mat = self._get_rotation_matrix(base_quat)
+        base_lin_vel = rot_mat.T @ base_lin_vel
+        base_ang_vel = rot_mat.T @ base_ang_vel
         gravity_body = rot_mat.T @ np.array([0.0, 0.0, -1.0], dtype=np.float32)
 
         # 3. Startup & Sensor Blocking Logic

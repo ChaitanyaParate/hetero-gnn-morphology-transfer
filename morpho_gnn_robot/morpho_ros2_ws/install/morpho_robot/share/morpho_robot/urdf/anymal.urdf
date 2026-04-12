@@ -805,73 +805,73 @@
         <plugin filename="gz-sim-joint-position-controller-system" name="gz::sim::systems::JointPositionController">
             <joint_name>LF_HAA</joint_name>
             <topic>/model/robot/joint/LF_HAA/cmd_pos</topic>
-            <p_gain>3500</p_gain><i_gain>0.1</i_gain><d_gain>100</d_gain>
+            <p_gain>1500</p_gain><i_gain>0.1</i_gain><d_gain>150</d_gain>
             <cmd_max>300</cmd_max><cmd_min>-300</cmd_min>
         </plugin>
         <plugin filename="gz-sim-joint-position-controller-system" name="gz::sim::systems::JointPositionController">
             <joint_name>LF_HFE</joint_name>
             <topic>/model/robot/joint/LF_HFE/cmd_pos</topic>
-            <p_gain>3500</p_gain><i_gain>0.1</i_gain><d_gain>100</d_gain>
+            <p_gain>1500</p_gain><i_gain>0.1</i_gain><d_gain>150</d_gain>
             <cmd_max>300</cmd_max><cmd_min>-300</cmd_min>
         </plugin>
         <plugin filename="gz-sim-joint-position-controller-system" name="gz::sim::systems::JointPositionController">
             <joint_name>LF_KFE</joint_name>
             <topic>/model/robot/joint/LF_KFE/cmd_pos</topic>
-            <p_gain>3500</p_gain><i_gain>0.1</i_gain><d_gain>100</d_gain>
+            <p_gain>1500</p_gain><i_gain>0.1</i_gain><d_gain>150</d_gain>
             <cmd_max>300</cmd_max><cmd_min>-300</cmd_min>
         </plugin>
         <plugin filename="gz-sim-joint-position-controller-system" name="gz::sim::systems::JointPositionController">
             <joint_name>RF_HAA</joint_name>
             <topic>/model/robot/joint/RF_HAA/cmd_pos</topic>
-            <p_gain>3500</p_gain><i_gain>0.1</i_gain><d_gain>100</d_gain>
+            <p_gain>1500</p_gain><i_gain>0.1</i_gain><d_gain>150</d_gain>
             <cmd_max>300</cmd_max><cmd_min>-300</cmd_min>
         </plugin>
         <plugin filename="gz-sim-joint-position-controller-system" name="gz::sim::systems::JointPositionController">
             <joint_name>RF_HFE</joint_name>
             <topic>/model/robot/joint/RF_HFE/cmd_pos</topic>
-            <p_gain>3500</p_gain><i_gain>0.1</i_gain><d_gain>100</d_gain>
+            <p_gain>1500</p_gain><i_gain>0.1</i_gain><d_gain>150</d_gain>
             <cmd_max>300</cmd_max><cmd_min>-300</cmd_min>
         </plugin>
         <plugin filename="gz-sim-joint-position-controller-system" name="gz::sim::systems::JointPositionController">
             <joint_name>RF_KFE</joint_name>
             <topic>/model/robot/joint/RF_KFE/cmd_pos</topic>
-            <p_gain>3500</p_gain><i_gain>0.1</i_gain><d_gain>100</d_gain>
+            <p_gain>1500</p_gain><i_gain>0.1</i_gain><d_gain>150</d_gain>
             <cmd_max>300</cmd_max><cmd_min>-300</cmd_min>
         </plugin>
         <plugin filename="gz-sim-joint-position-controller-system" name="gz::sim::systems::JointPositionController">
             <joint_name>LH_HAA</joint_name>
             <topic>/model/robot/joint/LH_HAA/cmd_pos</topic>
-            <p_gain>3500</p_gain><i_gain>0.1</i_gain><d_gain>100</d_gain>
+            <p_gain>1500</p_gain><i_gain>0.1</i_gain><d_gain>150</d_gain>
             <cmd_max>300</cmd_max><cmd_min>-300</cmd_min>
         </plugin>
         <plugin filename="gz-sim-joint-position-controller-system" name="gz::sim::systems::JointPositionController">
             <joint_name>LH_HFE</joint_name>
             <topic>/model/robot/joint/LH_HFE/cmd_pos</topic>
-            <p_gain>3500</p_gain><i_gain>0.1</i_gain><d_gain>100</d_gain>
+            <p_gain>1500</p_gain><i_gain>0.1</i_gain><d_gain>150</d_gain>
             <cmd_max>300</cmd_max><cmd_min>-300</cmd_min>
         </plugin>
         <plugin filename="gz-sim-joint-position-controller-system" name="gz::sim::systems::JointPositionController">
             <joint_name>LH_KFE</joint_name>
             <topic>/model/robot/joint/LH_KFE/cmd_pos</topic>
-            <p_gain>3500</p_gain><i_gain>0.1</i_gain><d_gain>100</d_gain>
+            <p_gain>1500</p_gain><i_gain>0.1</i_gain><d_gain>150</d_gain>
             <cmd_max>300</cmd_max><cmd_min>-300</cmd_min>
         </plugin>
         <plugin filename="gz-sim-joint-position-controller-system" name="gz::sim::systems::JointPositionController">
             <joint_name>RH_HAA</joint_name>
             <topic>/model/robot/joint/RH_HAA/cmd_pos</topic>
-            <p_gain>3500</p_gain><i_gain>0.1</i_gain><d_gain>100</d_gain>
+            <p_gain>1500</p_gain><i_gain>0.1</i_gain><d_gain>150</d_gain>
             <cmd_max>300</cmd_max><cmd_min>-300</cmd_min>
         </plugin>
         <plugin filename="gz-sim-joint-position-controller-system" name="gz::sim::systems::JointPositionController">
             <joint_name>RH_HFE</joint_name>
             <topic>/model/robot/joint/RH_HFE/cmd_pos</topic>
-            <p_gain>3500</p_gain><i_gain>0.1</i_gain><d_gain>100</d_gain>
+            <p_gain>1500</p_gain><i_gain>0.1</i_gain><d_gain>150</d_gain>
             <cmd_max>300</cmd_max><cmd_min>-300</cmd_min>
         </plugin>
         <plugin filename="gz-sim-joint-position-controller-system" name="gz::sim::systems::JointPositionController">
             <joint_name>RH_KFE</joint_name>
             <topic>/model/robot/joint/RH_KFE/cmd_pos</topic>
-            <p_gain>3500</p_gain><i_gain>0.1</i_gain><d_gain>100</d_gain>
+            <p_gain>1500</p_gain><i_gain>0.1</i_gain><d_gain>150</d_gain>
             <cmd_max>300</cmd_max><cmd_min>-300</cmd_min>
         </plugin>
 
