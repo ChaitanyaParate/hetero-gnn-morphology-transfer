@@ -28,7 +28,8 @@ import rclpy
 from rclpy.node import Node
 from sensor_msgs.msg import JointState
 from nav_msgs.msg import Odometry
-from std_msgs.msg import Float64
+from std_msgs.msg import Float64, String
+import json
 
 try:
     from urdf_to_graph import URDFGraphBuilder
@@ -102,7 +103,8 @@ class MLPActorCritic(torch.nn.Module):
         entropy = dist.entropy().sum(dim=-1)
         value = self.critic_head(h)
         return action, log_prob, entropy, value
-
+# Calibration Offsets to fix physical lilt (Joint Name: Offset)
+CALIBRATION_OFFSETS = {}
 
 class MLPPolicyNode(Node):
     def __init__(
@@ -112,8 +114,10 @@ class MLPPolicyNode(Node):
         device_str: str,
         action_remap: str,
         odom_in_base_frame: bool,
+        speed_multiplier: float,
     ):
         super().__init__("MLP_policy_node")
+        self._speed_multiplier = speed_multiplier
         self.device = torch.device(device_str)
         self.get_logger().info(f"Device: {self.device}")
 
@@ -169,6 +173,14 @@ class MLPPolicyNode(Node):
         from rclpy.qos import qos_profile_sensor_data
         self.create_subscription(JointState, "/joint_states", self._cb_joint_states, qos_profile_sensor_data)
         self.create_subscription(Odometry, "/odom", self._cb_odom, qos_profile_sensor_data)
+        self._vision_sub = self.create_subscription(
+            String, 
+            "/scene_detections", 
+            self._cb_vision, 
+            rclpy.qos.qos_profile_sensor_data
+        )
+
+        self._steer_bias = 0.05  # Inversed digital trim
 
         self._joint_pubs = {
             jname: self.create_publisher(Float64, JOINT_COMMAND_FMT.format(jname), 10)
@@ -325,6 +337,24 @@ class MLPPolicyNode(Node):
             self._base_ang_vel = np.array([tw.angular.x, tw.angular.y, tw.angular.z], dtype=np.float32)
             self._odom_ready = True
 
+    def _cb_vision(self, msg):
+        try:
+            data = json.loads(msg.data)
+            dist = data.get('obstacle_distances', {})
+            left = dist.get('left', 10.0)
+            right = dist.get('right', 10.0)
+            
+            # Steering logic disabled for now (Straight movement test)
+            target_steer = 0.0
+            # if left < 2.0:
+            #     target_steer = -0.8 * (2.0 - left) / 2.0
+            # elif right < 2.0:
+            #     target_steer = 0.8 * (2.0 - right) / 2.0
+            
+            # self._steer_bias = 0.5 * self._steer_bias + 0.5 * target_steer
+        except Exception as e:
+            self.get_logger().error(f"Vision parse error: {e}")
+
     def _control_cb(self):
         try:
             self._do_control()
@@ -378,6 +408,10 @@ class MLPPolicyNode(Node):
         base_lin_vel = rot_mat.T @ base_lin_vel
         base_ang_vel = rot_mat.T @ base_ang_vel
         gravity_body = rot_mat.T @ np.array([0.0, 0.0, -1.0], dtype=np.float32)
+        
+        # Lateral Alignment: Inversed Roll correction
+        gravity_body[1] -= 0.04  # Inversed roll correction
+        gravity_body = gravity_body / np.linalg.norm(gravity_body)
 
         # 3. Startup & Sensor Blocking Logic
         if not self._odom_ready or not self._joint_ready:
@@ -403,16 +437,31 @@ class MLPPolicyNode(Node):
         if (now - self._last_telemetry_time).nanoseconds > 1e9:
             pitch_est = -gravity_body[0]
             roll_est  = gravity_body[1]
-            action_mag = np.mean(np.abs(self._prev_action))
+            
+            # Diagnostic: Compare Left vs Right action magnitudes
+            # self._prev_action: [LF..., LH..., RF..., RH...] -> Left=0:6, Right=6:12
+            left_avg = np.mean(np.abs(self._prev_action[:6]))
+            right_avg = np.mean(np.abs(self._prev_action[6:12]))
+            
             self.get_logger().info(
-                f"Telemetery | P/R: {pitch_est:.2f}/{roll_est:.2f} | Act: {action_mag:.3f} | "
-                f"QuatRaw: [{base_quat[0]:.2f},{base_quat[1]:.2f},{base_quat[2]:.2f},{base_quat[3]:.2f}] | "
-                f"Joint0: {pos[0]:.2f}"
+                f"Telemetery | P/R: {pitch_est:.2f}/{roll_est:.2f} | "
+                f"L/R-Act: {left_avg:.3f}/{right_avg:.3f} | "
+                f"Steer: {self._steer_bias:.2f} | "
+                f"QuatRaw: [{base_quat[0]:.2f},{base_quat[1]:.2f},{base_quat[2]:.2f},{base_quat[3]:.2f}]"
             )
             self._last_telemetry_time = now
 
         # 5. Neural Network Inference
-        obs = np.concatenate([pos, vel, base_lin_vel, base_ang_vel, base_quat, gravity_body]).astype(np.float32)
+        # heading-invariant: Force yaw to zero in the observation quat
+        # so the policy doesn't try to U-turn to reach a specific world heading.
+        from scipy.spatial.transform import Rotation as R
+        r = R.from_quat(base_quat)
+        euler = r.as_euler('xyz')
+        # Keep roll and pitch, zero out yaw
+        neutral_r = R.from_euler('xyz', [euler[0], euler[1], 0.0])
+        neutral_quat = neutral_r.as_quat().astype(np.float32)
+
+        obs = np.concatenate([pos, vel, base_lin_vel, base_ang_vel, neutral_quat, gravity_body]).astype(np.float32)
         obs_n = self._normalize_policy_obs(obs)
         obs_t = torch.tensor(obs_n, dtype=torch.float32, device=self.device).unsqueeze(0)
 
@@ -437,9 +486,17 @@ class MLPPolicyNode(Node):
         self._ticks += 1
 
         cmd_pos = []
+        
+        # Left vs Right scaling for steering
+        # Symmetry: Removed fixed dampener; using IMU correction instead.
+        left_scale = (1.0 + self._steer_bias)
+        right_scale = (1.0 - self._steer_bias)
+
         for i, jname in enumerate(self.builder.joint_names):
-            # target = nominal + scaled action * ramp
-            target = NOMINAL_POSE_PER_JOINT.get(jname, 0.0) + float(action_np[i] * POSITION_SCALE * ramp_factor)
+            # target = nominal + scaled action * ramp + calibration trim
+            s = (left_scale if i < 6 else right_scale) * self._speed_multiplier
+            trim = CALIBRATION_OFFSETS.get(jname, 0.0)
+            target = NOMINAL_POSE_PER_JOINT.get(jname, 0.0) + float(action_np[i] * POSITION_SCALE * s * ramp_factor) + trim
             target = float(np.clip(target, self._joint_lower[i], self._joint_upper[i]))
             delta = target - float(self._prev_cmd_pos[i])
             delta = float(np.clip(delta, -MAX_CMD_STEP, MAX_CMD_STEP))
@@ -474,6 +531,12 @@ def main():
         choices=[0, 1],
         help="Interpret /odom twist in base frame (1) or world frame (0)",
     )
+    parser.add_argument(
+        "--speed_multiplier",
+        default=1.0,
+        type=float,
+        help="Global stride length multiplier (higher = faster)",
+    )
     args, _ = parser.parse_known_args()
 
     rclpy.init()
@@ -483,6 +546,7 @@ def main():
         args.device,
         args.action_remap,
         bool(args.odom_in_base_frame),
+        args.speed_multiplier,
     )
     try:
         rclpy.spin(node)

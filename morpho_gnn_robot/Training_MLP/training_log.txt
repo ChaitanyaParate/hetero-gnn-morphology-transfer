@@ -1,1 +1,5 @@
 pybullet build time: Mar 29 2026 11:51:12
+/mnt/newvolume/Programming/Python/Deep_Learning/Relational_Bias_for_Morphological_Generalization/.venv/bin/python3 train_mlp_ppo.py \
+    --resume-path "/mnt/newvolume/Programming/Python/Deep_Learning/Relational_Bias_for_Morphological_Generalization/morpho_gnn_robot/Training_MLP/checkpoints/mlp_ppo_6303744.pt" \
+    --total-timesteps 20000000 \
+    --save-every 100000

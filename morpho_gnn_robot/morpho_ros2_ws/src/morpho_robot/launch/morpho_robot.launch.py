@@ -101,6 +101,12 @@ def generate_launch_description():
         default_value="/mnt/newvolume/Programming/Python/Deep_Learning/Relational_Bias_for_Morphological_Generalization/morpho_gnn_robot/Training_MLP/checkpoints/mlp_ppo_6303744.pt",
         description="Absolute path to .pt MLP checkpoint. Empty = random init.",
     )
+#mlp_ppo_6303744.pt
+    speed_multiplier_arg = DeclareLaunchArgument(
+        "speed_multiplier",
+        default_value="1.0",
+        description="Global stride length multiplier (higher = faster)",
+    )
 
     log_level_arg = DeclareLaunchArgument(
         "log_level",
@@ -323,6 +329,7 @@ def generate_launch_description():
                         "replan_interval_s":  5.0,
                         "scene_graph_topic":  "/scene_graph",
                         "action_topic":       "/llm_action",
+                        "speed_multiplier":   LaunchConfiguration("speed_multiplier"),
                         "max_tokens":         256,
                         "task":               "navigate to the goal",
                     }
@@ -389,6 +396,7 @@ def generate_launch_description():
                     '--device', 'cuda',
                     '--action_remap', LaunchConfiguration("action_remap"),
                     '--odom_in_base_frame', LaunchConfiguration("odom_in_base_frame"),
+                    '--speed_multiplier', LaunchConfiguration("speed_multiplier"),
                 ],
                 output='screen',
             )
@@ -445,6 +453,7 @@ def generate_launch_description():
             mlp_checkpoint_arg,
             action_remap_arg,
             odom_in_base_frame_arg,
+            speed_multiplier_arg,
             log_level_arg,
             spawn_yaw_arg,
             # Nodes -- order matters due to TimerAction delays

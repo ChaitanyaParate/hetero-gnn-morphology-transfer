@@ -20,6 +20,8 @@ Action: 12-dim in [-1, 1]. Scaled by effort_limit inside step().
 import numpy as np
 import gymnasium as gym
 from gymnasium import spaces
+from mlp_actor_critic import MLPActorCritic
+from scipy.spatial.transform import Rotation as R
 
 try:
     import pybullet as p
@@ -169,21 +171,27 @@ class RobotEnvBullet(gym.Env):
         self._robot_id = robot_id
 
         # Map joint names to PyBullet joint indices
-        num_joints   = p.getNumJoints(robot_id)
+        num_joints = p.getNumJoints(robot_id)
         self._joint_idx: dict = {}
-
+        self.foot_indices = []
+        self.heavy_indices = [] # base, hips, thighs
+        
         for i in range(num_joints):
             info = p.getJointInfo(robot_id, i)
-            name  = info[1].decode("utf-8")
+            name = info[1].decode("utf-8")
+            link_name = info[12].decode("utf-8")
+            
+            # 1. Cache indices for ALL links (collision detection)
+            if "_FOOT" in link_name:
+                self.foot_indices.append(i)
+            elif "HIP" in link_name or "THIGH" in link_name:
+                self.heavy_indices.append(i)
+                
+            # 2. Map ONLY controllable joints for the policy
             if name in self.joint_names:
                 self._joint_idx[name] = i
                 # CRITICAL: disable default position control motor
-                # Without this, PyBullet fights your torque commands
-                p.setJointMotorControl2(
-                    robot_id, i,
-                    p.VELOCITY_CONTROL,
-                    force=0
-                )
+                p.setJointMotorControl2(robot_id, i, p.VELOCITY_CONTROL, force=0)
 
         assert len(self._joint_idx) == len(self.joint_names), (
             f"URDF has {len(self.joint_names)} controllable joints but "
@@ -336,6 +344,27 @@ class RobotEnvBullet(gym.Env):
 
         # --- observation ---
         obs = self._get_obs()
+        
+        # --- ground contact penalty ---
+        contact_penalty = 0.0
+        contact_termination = False
+        
+        # Check for contacts on non-foot links
+        contacts = p.getContactPoints(bodyA=self._robot_id)
+        for contact in contacts:
+            link_idx = contact[3] # linkIndexA
+            
+            if link_idx == -1: # base_link
+                contact_penalty = -20.0
+                contact_termination = True
+                break
+
+            if link_idx not in self.foot_indices:
+                contact_penalty = -5.0 # Per-step contact penalty
+                if link_idx in self.heavy_indices:
+                    contact_penalty = -20.0
+                    contact_termination = True
+                    break
 
         # --- base state ---
         base_pos, base_orn = p.getBasePositionAndOrientation(self._robot_id)
@@ -349,9 +378,10 @@ class RobotEnvBullet(gym.Env):
             smooth_penalty,
             base_height=base_height
         )
+        reward += contact_penalty
 
         # --- termination ---
-        self._fell = base_height < 0.20
+        self._fell = base_height < 0.20 or contact_termination
         bad_orientation = abs(roll) > 0.8 or abs(pitch) > 0.8
 
         terminated = self._fell or bad_orientation
@@ -396,7 +426,14 @@ class RobotEnvBullet(gym.Env):
         # Projected gravity in body frame
         gravity_body = rot_mat.T @ np.array([0.0, 0.0, -1.0], dtype=np.float32)
 
-        obs = np.concatenate([joint_pos, joint_vel, lin_vel_body, ang_vel_body, quat, gravity_body])
+        # NEUTRAL YAW: Force yaw to zero in the observation quat
+        r = R.from_quat(quat)
+        euler = r.as_euler('xyz')
+        # Keep roll and pitch, zero out yaw
+        neutral_r = R.from_euler('xyz', [euler[0], euler[1], 0.0])
+        neutral_quat = neutral_r.as_quat().astype(np.float32)
+
+        obs = np.concatenate([joint_pos, joint_vel, lin_vel_body, ang_vel_body, neutral_quat, gravity_body])
         
         # Add Domain Randomization Noise
         noise = np.zeros_like(obs)
@@ -422,11 +459,12 @@ class RobotEnvBullet(gym.Env):
         # 2. Base Height Reward (Gaussian bonus for nominal height 0.45m)
         target_height = 0.45
         height_error = base_height - target_height
-        r_height = 3.0 * np.exp(-15.0 * (height_error**2))
+        # Tightened and boosted weight (from 3.0 to 10.0)
+        r_height = 10.0 * np.exp(-20.0 * (height_error**2))
         
         # 3. Stability Penalties
         r_stability = (
-            -1.0 * (roll**2 + pitch**2)     # Upright stance
+            -2.0 * (roll**2 + pitch**2)     # Upright stance boost
             -2.0 * abs(lateral_vel)         # Heading alignment
             -1.0 * (yaw_rate ** 2)          # Yaw stability
         )

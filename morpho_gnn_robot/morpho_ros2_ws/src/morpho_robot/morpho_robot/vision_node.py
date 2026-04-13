@@ -123,9 +123,10 @@ class VisionNode(Node):
             valid_roi = roi[np.isfinite(roi) & (roi > 0)]
             min_dist = float(np.min(valid_roi)) if valid_roi.size > 0 else float('nan')
 
-            # Method 3: left/right depth medians
-            left = depth_snapshot[:, :w // 3]
-            right = depth_snapshot[:, 2 * w // 3:]
+            # Method 3: left/right depth medians (Cropped to middle-height to ignore ground)
+            h_start, h_end = h // 3, 2 * h // 3
+            left = depth_snapshot[h_start:h_end, :w // 3]
+            right = depth_snapshot[h_start:h_end, 2 * w // 3:]
             left_valid = left[np.isfinite(left) & (left > 0)]
             right_valid = right[np.isfinite(right) & (right > 0)]
             left_dist = float(np.median(left_valid)) if left_valid.size > 0 else float('nan')
@@ -225,7 +226,16 @@ class VisionNode(Node):
             cv2.imshow("detections", annotated)
             cv2.waitKey(1)
 
-        scene = {'objects': objects, 'timestamp': msg.header.stamp.sec}
+        scene = {
+            'objects': objects,
+            'timestamp': int(msg.header.stamp.sec),
+            'obstacle_distances': {
+                'left': float(round(left_dist, 3)) if not np.isnan(left_dist) else 10.0,
+                'right': float(round(right_dist, 3)) if not np.isnan(right_dist) else 10.0,
+                'front': float(round(center_depth, 3)) if not np.isnan(center_depth) else 10.0,
+                'closest': float(round(min_dist, 3)) if not np.isnan(min_dist) else 10.0
+            }
+        }
         
         out = String()
         out.data = json.dumps(scene)
