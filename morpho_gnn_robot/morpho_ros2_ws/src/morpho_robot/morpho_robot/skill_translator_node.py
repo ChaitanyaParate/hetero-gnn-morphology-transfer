@@ -1,44 +1,36 @@
-#!/usr/bin/env python3
-
 import json
 import math
 import re
 from typing import Any, Dict, List, Optional, Tuple
-
 import rclpy
 from geometry_msgs.msg import PoseStamped
 from rclpy.node import Node
 from std_msgs.msg import String
 
-
 def yaw_to_quaternion(yaw: float) -> Tuple[float, float, float, float]:
     half = 0.5 * yaw
-    return 0.0, 0.0, math.sin(half), math.cos(half)
-
+    return (0.0, 0.0, math.sin(half), math.cos(half))
 
 def parse_target_token(target: str) -> Tuple[str, Optional[int]]:
-    # Accept targets like "box" or "box_2" (1-based index).
-    m = re.fullmatch(r"([A-Za-z0-9\-]+)(?:_(\d+))?", target.strip())
+    m = re.fullmatch('([A-Za-z0-9\\-]+)(?:_(\\d+))?', target.strip())
     if not m:
-        return target.strip(), None
+        return (target.strip(), None)
     label = m.group(1)
     idx = int(m.group(2)) if m.group(2) is not None else None
-    return label, idx
-
+    return (label, idx)
 
 class SkillTranslatorNode(Node):
+
     def __init__(self):
         super().__init__('skill_translator_node')
-
         self.declare_parameter('llm_action_topic', '/llm_action')
         self.declare_parameter('scene_graph_topic', '/scene_graph')
         self.declare_parameter('goal_pose_topic', '/goal_pose')
         self.declare_parameter('active_skill_topic', '/active_skill')
         self.declare_parameter('goal_frame_id', 'base_link')
-        self.declare_parameter('camera_half_fov_rad', 0.5236)  # ~30 deg
+        self.declare_parameter('camera_half_fov_rad', 0.5236)
         self.declare_parameter('stop_distance_m', 0.7)
         self.declare_parameter('default_forward_goal_m', 1.0)
-
         self.llm_action_topic = self.get_parameter('llm_action_topic').value
         self.scene_graph_topic = self.get_parameter('scene_graph_topic').value
         self.goal_pose_topic = self.get_parameter('goal_pose_topic').value
@@ -47,20 +39,12 @@ class SkillTranslatorNode(Node):
         self.camera_half_fov_rad = float(self.get_parameter('camera_half_fov_rad').value)
         self.stop_distance_m = float(self.get_parameter('stop_distance_m').value)
         self.default_forward_goal_m = float(self.get_parameter('default_forward_goal_m').value)
-
         self._latest_scene: Dict[str, Any] = {}
-
         self.create_subscription(String, self.scene_graph_topic, self._scene_cb, 10)
         self.create_subscription(String, self.llm_action_topic, self._action_cb, 10)
-
         self.goal_pub = self.create_publisher(PoseStamped, self.goal_pose_topic, 10)
         self.skill_pub = self.create_publisher(String, self.active_skill_topic, 10)
-
-        self.get_logger().info(
-            f'skill_translator_node ready | in_action={self.llm_action_topic} '
-            f'| in_scene={self.scene_graph_topic} | out_goal={self.goal_pose_topic} '
-            f'| out_skill={self.active_skill_topic}'
-        )
+        self.get_logger().info(f'skill_translator_node ready | in_action={self.llm_action_topic} | in_scene={self.scene_graph_topic} | out_goal={self.goal_pose_topic} | out_skill={self.active_skill_topic}')
 
     def _scene_cb(self, msg: String) -> None:
         try:
@@ -80,31 +64,20 @@ class SkillTranslatorNode(Node):
         except Exception as exc:
             self.get_logger().warn(f'Invalid llm_action JSON: {exc}', throttle_duration_sec=5.0)
             return
-
         skill = str(action.get('skill', 'unknown'))
         target = str(action.get('target', '')).strip()
         params = action.get('params', {})
         if not isinstance(params, dict):
             params = {}
-
         self._publish_active_skill(skill)
-
-        # Prefer explicit coordinates if provided by planner.
         goal_xy = self._extract_goal_from_params(params)
         if goal_xy is None:
             goal_xy = self._resolve_goal_from_scene(target)
-
         if goal_xy is None:
             goal_xy = self._fallback_goal(skill, target)
-
         if goal_xy is None:
-            self.get_logger().warn(
-                f'No goal resolved for target="{target}". '\
-                'Need params {x,y} or a matching object in scene_graph.',
-                throttle_duration_sec=3.0,
-            )
+            self.get_logger().warn(f'No goal resolved for target="{target}". Need params {{x,y}} or a matching object in scene_graph.', throttle_duration_sec=3.0)
             return
-
         self._publish_goal_pose(goal_xy[0], goal_xy[1])
 
     def _publish_active_skill(self, skill: str) -> None:
@@ -113,29 +86,24 @@ class SkillTranslatorNode(Node):
         self.skill_pub.publish(out)
 
     def _extract_goal_from_params(self, params: Dict[str, Any]) -> Optional[Tuple[float, float]]:
-        # Accept common coordinate key variants.
         key_pairs = [('x', 'y'), ('goal_x', 'goal_y'), ('target_x', 'target_y')]
         for kx, ky in key_pairs:
             if kx in params and ky in params:
                 try:
-                    return float(params[kx]), float(params[ky])
+                    return (float(params[kx]), float(params[ky]))
                 except Exception:
                     return None
-
-        # Some planner outputs echo scene data inside params.objects.
         p_objects = params.get('objects')
         if isinstance(p_objects, list) and p_objects:
             goal = self._goal_from_object(p_objects[0])
             if goal is not None:
                 return goal
-
         return None
 
     def _resolve_goal_from_scene(self, target: str) -> Optional[Tuple[float, float]]:
         objects = self._latest_scene.get('objects', [])
         if not isinstance(objects, list) or not objects:
             return None
-
         label, idx = parse_target_token(target)
         candidates: List[Dict[str, Any]] = []
         for obj in objects:
@@ -144,22 +112,17 @@ class SkillTranslatorNode(Node):
             if label and str(obj.get('label', '')).lower() != label.lower():
                 continue
             candidates.append(obj)
-
         if not candidates:
             return None
-
-        # Stable ordering: highest confidence first.
         candidates.sort(key=lambda o: float(o.get('confidence', 0.0)), reverse=True)
         if idx is None:
             obj = candidates[0]
         else:
-            # idx is 1-based in user-facing target names.
             sel = max(1, idx) - 1
             if sel >= len(candidates):
                 obj = candidates[-1]
             else:
                 obj = candidates[sel]
-
         return self._goal_from_object(obj)
 
     def _goal_from_object(self, obj: Dict[str, Any]) -> Optional[Tuple[float, float]]:
@@ -168,31 +131,23 @@ class SkillTranslatorNode(Node):
             bearing = float(obj.get('bearing', 0.0))
         except Exception:
             return None
-
-        # Convert normalized bearing [-1,1] into radians using camera half-FOV.
         yaw = max(-1.0, min(1.0, bearing)) * self.camera_half_fov_rad
         forward = max(0.0, distance - self.stop_distance_m)
         x = forward * math.cos(yaw)
         y = forward * math.sin(yaw)
-        return x, y
+        return (x, y)
 
     def _fallback_goal(self, skill: str, target: str) -> Optional[Tuple[float, float]]:
-        # If planner asks for generic navigation without a resolved object,
-        # issue a short forward goal so the policy can keep progressing.
         s = skill.strip().lower()
         t = target.strip().lower()
         if s.startswith('navigate') and t in ('goal', 'forward', ''):
-            self.get_logger().warn(
-                f'Using fallback forward goal: x={self.default_forward_goal_m:.2f}, y=0.00',
-                throttle_duration_sec=3.0,
-            )
-            return self.default_forward_goal_m, 0.0
+            self.get_logger().warn(f'Using fallback forward goal: x={self.default_forward_goal_m:.2f}, y=0.00', throttle_duration_sec=3.0)
+            return (self.default_forward_goal_m, 0.0)
         return None
 
     def _publish_goal_pose(self, x: float, y: float) -> None:
-        yaw = math.atan2(y, x) if abs(x) + abs(y) > 1e-6 else 0.0
+        yaw = math.atan2(y, x) if abs(x) + abs(y) > 1e-06 else 0.0
         qx, qy, qz, qw = yaw_to_quaternion(yaw)
-
         msg = PoseStamped()
         msg.header.stamp = self.get_clock().now().to_msg()
         msg.header.frame_id = self.goal_frame_id
@@ -204,11 +159,7 @@ class SkillTranslatorNode(Node):
         msg.pose.orientation.z = qz
         msg.pose.orientation.w = qw
         self.goal_pub.publish(msg)
-
-        self.get_logger().info(
-            f'Published goal_pose: frame={self.goal_frame_id}, x={x:.2f}, y={y:.2f}, yaw={yaw:.2f}'
-        )
-
+        self.get_logger().info(f'Published goal_pose: frame={self.goal_frame_id}, x={x:.2f}, y={y:.2f}, yaw={yaw:.2f}')
 
 def main(args=None):
     rclpy.init(args=args)

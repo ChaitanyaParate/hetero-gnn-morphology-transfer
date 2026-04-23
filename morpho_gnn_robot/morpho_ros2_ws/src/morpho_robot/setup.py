@@ -1,30 +1,5 @@
 from setuptools import setup
 import os
 from glob import glob
-
-package_name = "morpho_robot"
-
-setup(
-    name=package_name,
-    version="0.1.0",
-    packages=[package_name],
-    data_files=[
-        ("share/ament_index/resource_index/packages", ["resource/" + package_name]),
-        ("share/" + package_name, ["package.xml"]),
-        (os.path.join("share", package_name, "launch"), glob("launch/*.py")),
-        (os.path.join("share", package_name, "urdf"),   glob("urdf/*")),
-        (os.path.join("share", package_name, "worlds"), glob("worlds/*")),
-        (os.path.join("share", package_name, "config"), glob("config/*")),
-        (os.path.join('share', package_name, 'meshes'), glob('meshes/*')),
-    ],
-    install_requires=["setuptools"],
-    entry_points={
-        "console_scripts": [
-            "vision_node            = morpho_robot.vision_node:main",
-            "llm_planner_node       = morpho_robot.llm_planner_node:main",
-            "skill_translator_node  = morpho_robot.skill_translator_node:main",
-            "gnn_policy_node        = morpho_robot.gnn_policy_node:main",
-            "MLP_policy_node        = morpho_robot.MLP_policy_node:main",
-        ],
-    },
-)
+package_name = 'morpho_robot'
+setup(name=package_name, version='0.1.0', packages=[package_name], data_files=[('share/ament_index/resource_index/packages', ['resource/' + package_name]), ('share/' + package_name, ['package.xml']), (os.path.join('share', package_name, 'launch'), glob('launch/*.py')), (os.path.join('share', package_name, 'urdf'), glob('urdf/*')), (os.path.join('share', package_name, 'worlds'), glob('worlds/*')), (os.path.join('share', package_name, 'config'), glob('config/*')), (os.path.join('share', package_name, 'meshes'), glob('meshes/*'))], install_requires=['setuptools'], entry_points={'console_scripts': ['vision_node            = morpho_robot.vision_node:main', 'llm_planner_node       = morpho_robot.llm_planner_node:main', 'skill_translator_node  = morpho_robot.skill_translator_node:main', 'gnn_policy_node        = morpho_robot.gnn_policy_node:main', 'MLP_policy_node        = morpho_robot.MLP_policy_node:main']})

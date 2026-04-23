@@ -1,575 +1,284 @@
-"""
-robot_env_bullet.py
-
-Gym environment for legged robot locomotion using PyBullet DIRECT mode.
-Designed for Kaggle headless training -- no display, no GUI.
-
-Observation layout (flat, 37-dim):
-  [0:12]  joint positions   (rad)
-  [12:24] joint velocities  (rad/s)
-  [24:27] base linear  velocity (m/s)
-  [27:30] base angular velocity (rad/s)
-
-Joint ordering: alphabetically sorted by name.
-This MUST match URDFGraphBuilder(urdf_path).joint_names for graph construction.
-Both sort alphabetically -- they will always agree.
-
-Action: 12-dim in [-1, 1]. Scaled by effort_limit inside step().
-"""
-
 import numpy as np
 import gymnasium as gym
 from gymnasium import spaces
 from scipy.spatial.transform import Rotation as R
-
 try:
     import pybullet as p
     import pybullet_data
 except ImportError:
-    raise ImportError("pip install pybullet")
-
-
-CONTROLLABLE = {"revolute", "continuous", "prismatic"}
-
-# PD gains -- higher stiffness needed to hold ANYmal against gravity
+    raise ImportError('pip install pybullet')
+CONTROLLABLE = {'revolute', 'continuous', 'prismatic'}
 KP = 150.0
 KD = 5.0
-
-# Contact/friction tuning
 PLANE_LATERAL_FRICTION = 1.3
 PLANE_SPINNING_FRICTION = 0.05
 PLANE_ROLLING_FRICTION = 0.001
 LINK_LATERAL_FRICTION = 1.3
 LINK_SPINNING_FRICTION = 0.03
 LINK_ROLLING_FRICTION = 0.001
-
-# ANYmal nominal standing pose -- front and hind legs have OPPOSITE sign conventions
-NOMINAL_POSE_PER_JOINT = {
-    "LF_HAA":  0.0,  "LF_HFE":  0.6,  "LF_KFE": -1.2,
-    "RF_HAA":  0.0,  "RF_HFE":  0.6,  "RF_KFE": -1.2,
-    "LM_HAA":  0.0,  "LM_HFE":  0.6,  "LM_KFE": -1.2,
-    "RM_HAA":  0.0,  "RM_HFE":  0.6,  "RM_KFE": -1.2,
-    "LH_HAA":  0.0,  "LH_HFE": -0.6,  "LH_KFE":  1.2,
-    "RH_HAA":  0.0,  "RH_HFE": -0.6,  "RH_KFE":  1.2,
-}
-
+NOMINAL_POSE_PER_JOINT = {'LF_HAA': 0.0, 'LF_HFE': 0.6, 'LF_KFE': -1.2, 'RF_HAA': 0.0, 'RF_HFE': 0.6, 'RF_KFE': -1.2, 'LM_HAA': 0.0, 'LM_HFE': 0.6, 'LM_KFE': -1.2, 'RM_HAA': 0.0, 'RM_HFE': 0.6, 'RM_KFE': -1.2, 'LH_HAA': 0.0, 'LH_HFE': -0.6, 'LH_KFE': 1.2, 'RH_HAA': 0.0, 'RH_HFE': -0.6, 'RH_KFE': 1.2}
 
 class RobotEnvBullet(gym.Env):
-    """
-    Parameters
-    ----------
-    urdf_path         : absolute path to robot URDF
-    max_episode_steps : episode terminates after this many steps
-    render_mode       : "human" opens GUI; None (or "direct") stays headless
-    forward_axis      : 0=x, 1=y -- direction of desired locomotion
-    """
+    metadata = {'render_modes': ['human', 'direct']}
+    FALL_PENALTY = 100.0
 
-    metadata = {"render_modes": ["human", "direct"]}
-
-    # Reward weights
-    # NOTE: torque cost is small but non-zero to regularize energy without
-    # collapsing to a stand-still policy.
-    FALL_PENALTY = 500.0   # Reduced to encourage risk-taking during discovery phase.
-
-    def __init__(
-        self,
-        urdf_path:         str,
-        max_episode_steps: int   = 1000,
-        render_mode:       str   = None,
-        forward_axis:      int   = 0,
-        height_threshold:  float = 0.30,
-    ):
+    def __init__(self, urdf_path: str, max_episode_steps: int=1000, render_mode: str=None, forward_axis: int=0, height_threshold: float=0.22):
         super().__init__()
-        self.urdf_path         = urdf_path
+        self.urdf_path = urdf_path
         self.max_episode_steps = max_episode_steps
-        self.render_mode       = render_mode
-        self.forward_axis      = forward_axis
-        self.height_threshold  = height_threshold
-
-        # Parse URDF once to get joint metadata
+        self.render_mode = render_mode
+        self.forward_axis = forward_axis
+        self.height_threshold = height_threshold
         self._parse_urdf()
-
-        # Observation layout (36-dim):
-        #   [0:12]  joint positions   (rad)
-        #   [12:24] joint velocities  (rad/s)
-        #   [24:27] base linear velocity (m/s)
-        #   [27:30] base angular velocity (rad/s)
-        #   [30:34] base orientation as quaternion (qx, qy, qz, qw)
-        #   [34:37] projected gravity vector (body frame)
-        # Quaternion + gravity vector together give the policy unambiguous
-        # information about whether it is upright. Without this, the policy
-        # cannot observe roll/pitch and cannot learn to stand or recover.
-        self.obs_dim    = 12 + 12 + 3 + 3 + 4 + 3   # = 37
         self.action_dim = len(self.joint_names)
-
-        self.observation_space = spaces.Box(
-            low=-np.inf, high=np.inf,
-            shape=(self.obs_dim,), dtype=np.float32
-        )
-        self.action_space = spaces.Box(
-            low=-1.0, high=1.0,
-            shape=(self.action_dim,), dtype=np.float32
-        )
-
-        # Domain Randomization & Robustness params
-        self.obs_noise_scale = 0.01  # 1% noise on joint pos
-        self.vel_noise_scale = 0.02  # 2% noise on velocities
-        self.action_lag_prob = 0.0   # Reduced to 0.0 to unleash Phase 3 walking rhythm
+        self.obs_dim = self.action_dim * 2 + 15  # Increased by 2 for command (vx, wy)
+        self.observation_space = spaces.Box(low=-np.inf, high=np.inf, shape=(self.obs_dim,), dtype=np.float32)
+        self.action_space = spaces.Box(low=-1.0, high=1.0, shape=(self.action_dim,), dtype=np.float32)
+        self.command = np.array([0.0, 0.0], dtype=np.float32)
+        self.obs_noise_scale = 0.01
+        self.vel_noise_scale = 0.02
+        self.action_lag_prob = 0.0
         self.action_history = []
-
-        
-
-        # Connect to PyBullet
-        if render_mode == "human":
+        if render_mode == 'human':
             self._physics_client = p.connect(p.GUI)
         else:
             self._physics_client = p.connect(p.DIRECT)
             p.setPhysicsEngineParameter(enableFileCaching=0)
-
         p.configureDebugVisualizer(p.COV_ENABLE_SHADOWS, 0)
         p.setAdditionalSearchPath(pybullet_data.getDataPath())
-
-        self._robot_id    = None
-        self._step_count  = 0
-        self._fell        = False
+        self._robot_id = None
+        self._step_count = 0
+        self._fell = False
         self.prev_action = np.zeros(self.action_dim)
-
-        # Fixed action scale: 0.40 is the 'sweet spot' for descubrimiento.
-        # It's high enough to walk but low enough that noise isn't lethal.
         self._global_step = 0
-        self._action_scale = 0.40
+        self._action_scale = 0.6
 
-    # ------------------------------------------------------------------
     def _parse_urdf(self):
-        """Read URDF to get joint names, types, and effort limits."""
         import xml.etree.ElementTree as ET
         root = ET.parse(self.urdf_path).getroot()
-
-        names:   list = []
+        names: list = []
         efforts: dict = {}
-
-        for joint in root.findall("joint"):
-            jtype = joint.attrib.get("type", "fixed")
+        for joint in root.findall('joint'):
+            jtype = joint.attrib.get('type', 'fixed')
             if jtype not in CONTROLLABLE:
                 continue
-            name = joint.attrib["name"]
+            name = joint.attrib['name']
             names.append(name)
-            lim = joint.find("limit")
-            efforts[name] = float(lim.attrib.get("effort", 40.0)) if lim is not None else 40.0
-
-        # Sort alphabetically -- same ordering as URDFGraphBuilder
-        self.joint_names   = sorted(names)
+            lim = joint.find('limit')
+            efforts[name] = float(lim.attrib.get('effort', 40.0)) if lim is not None else 40.0
+        self.joint_names = sorted(names)
         self.effort_limits = np.array([efforts[n] for n in self.joint_names])
 
-    # ------------------------------------------------------------------
     def _load_robot(self):
-        """(Re)load robot in PyBullet. Called on every reset()."""
         if self._robot_id is not None:
             p.removeBody(self._robot_id)
-
-        # Start slightly above ground; adjust if URDF origin differs
-        start_pos    = [0.0, 0.0, 0.50]  # Slightly above standing height to allow settling
-        start_orient = p.getQuaternionFromEuler([
-            np.random.uniform(-0.05, 0.05),
-            np.random.uniform(-0.05, 0.05),
-            0.0
-        ])
-        robot_id     = p.loadURDF(
-            self.urdf_path,
-            start_pos, start_orient,
-            useFixedBase=False,
-            flags=0, # Disabled self-collision to prevent Hexapod explosion
-        )
+        start_pos = [0.0, 0.0, 0.5]
+        start_orient = p.getQuaternionFromEuler([np.random.uniform(-0.05, 0.05), np.random.uniform(-0.05, 0.05), 0.0])
+        robot_id = p.loadURDF(self.urdf_path, start_pos, start_orient, useFixedBase=False, flags=0)
         self._robot_id = robot_id
-
-        # Map joint names to PyBullet joint indices
         num_joints = p.getNumJoints(robot_id)
         self._joint_idx: dict = {}
         self.foot_indices = []
-        self.heavy_indices = [] # base, hips, thighs
-        
+        self.heavy_indices = []
         for i in range(num_joints):
             info = p.getJointInfo(robot_id, i)
-            name = info[1].decode("utf-8")
-            link_name = info[12].decode("utf-8")
-            
-            # 1. Cache indices for ALL links (collision detection)
-            if "_FOOT" in link_name:
+            name = info[1].decode('utf-8')
+            link_name = info[12].decode('utf-8')
+            if any((x in link_name.upper() for x in ['FOOT', 'ADAPTER', 'SHANK'])):
                 self.foot_indices.append(i)
-            elif "HIP" in link_name or "THIGH" in link_name:
+            elif 'HIP' in link_name.upper() or 'THIGH' in link_name.upper():
                 self.heavy_indices.append(i)
-                
-            # 2. Map ONLY controllable joints for the policy
             if name in self.joint_names:
                 self._joint_idx[name] = i
-                # CRITICAL: disable default position control motor
                 p.setJointMotorControl2(robot_id, i, p.VELOCITY_CONTROL, force=0)
-
-        assert len(self._joint_idx) == len(self.joint_names), (
-            f"URDF has {len(self.joint_names)} controllable joints but "
-            f"PyBullet found {len(self._joint_idx)}. Check URDF path."
-        )
-
-        # Ordered PyBullet indices matching self.joint_names
-        self._pybullet_indices = np.array(
-            [self._joint_idx[n] for n in self.joint_names], dtype=np.int32
-        )
-
-        # Nominal standing pose in same alphabetical order as joint_names
-        self._nominal_pos = np.array([
-            NOMINAL_POSE_PER_JOINT.get(name, 0.0)
-            for name in self.joint_names
-        ])
-
-        # ---- Initialize joints to standing pose ----
+        assert len(self._joint_idx) == len(self.joint_names), f'URDF has {len(self.joint_names)} controllable joints but PyBullet found {len(self._joint_idx)}. Check URDF path.'
+        self._pybullet_indices = np.array([self._joint_idx[n] for n in self.joint_names], dtype=np.int32)
+        self._nominal_pos = np.array([NOMINAL_POSE_PER_JOINT.get(name, 0.0) for name in self.joint_names])
         for name, idx in self._joint_idx.items():
             val = NOMINAL_POSE_PER_JOINT.get(name, 0.0)
             p.resetJointState(self._robot_id, int(idx), val)
-
         for i in range(p.getNumJoints(self._robot_id)):
-            p.changeDynamics(
-                self._robot_id,
-                i,
-                linearDamping=0.04,
-                angularDamping=0.04,
-                lateralFriction=LINK_LATERAL_FRICTION,
-                spinningFriction=LINK_SPINNING_FRICTION,
-                rollingFriction=LINK_ROLLING_FRICTION,
-            )
+            p.changeDynamics(self._robot_id, i, linearDamping=0.04, angularDamping=0.04, lateralFriction=LINK_LATERAL_FRICTION, spinningFriction=LINK_SPINNING_FRICTION, rollingFriction=LINK_ROLLING_FRICTION)
+        p.changeDynamics(self._robot_id, -1, linearDamping=0.04, angularDamping=0.04, lateralFriction=LINK_LATERAL_FRICTION, spinningFriction=LINK_SPINNING_FRICTION, rollingFriction=LINK_ROLLING_FRICTION)
 
-        p.changeDynamics(
-            self._robot_id,
-            -1,  # base link
-            linearDamping=0.04,
-            angularDamping=0.04,
-            lateralFriction=LINK_LATERAL_FRICTION,
-            spinningFriction=LINK_SPINNING_FRICTION,
-            rollingFriction=LINK_ROLLING_FRICTION,
-        )
-
-
-    # ------------------------------------------------------------------
     def reset(self, seed=None, options=None):
         super().reset(seed=seed)
-
         p.resetSimulation()
-        self._robot_id = None   # resetSimulation already removed all bodies
+        self._robot_id = None
         p.setGravity(0, 0, -9.81)
-        p.setTimeStep(1.0 / 400.0) # Higher freq for 200Hz control (dt=2/400=5ms)
+        p.setTimeStep(1.0 / 400.0)
         p.setPhysicsEngineParameter(numSolverIterations=50, numSubSteps=1)
-        plane_id = p.loadURDF("plane.urdf")
-        p.changeDynamics(
-            plane_id,
-            -1,
-            lateralFriction=PLANE_LATERAL_FRICTION,
-            spinningFriction=PLANE_SPINNING_FRICTION,
-            rollingFriction=PLANE_ROLLING_FRICTION,
-        )
-
+        plane_id = p.loadURDF('plane.urdf')
+        p.changeDynamics(plane_id, -1, lateralFriction=PLANE_LATERAL_FRICTION, spinningFriction=PLANE_SPINNING_FRICTION, rollingFriction=PLANE_ROLLING_FRICTION)
         self._load_robot()
-
-        # --- Settling phase: hold nominal pose for 200 physics steps ---
-        # Without this, the robot drops from spawn height and heavy links
-        # (hips/thighs) make ground contact, triggering instant termination.
         for name, idx in self._joint_idx.items():
             target = NOMINAL_POSE_PER_JOINT.get(name, 0.0)
-            p.setJointMotorControl2(
-                self._robot_id, int(idx),
-                p.POSITION_CONTROL,
-                targetPosition=target,
-                force=200.0,  # Strong servo to hold pose
-            )
-        for _ in range(100):  # 100 steps at 400Hz = 0.25s settling
+            p.setJointMotorControl2(self._robot_id, int(idx), p.POSITION_CONTROL, targetPosition=target, force=200.0)
+        for _ in range(100):
             p.stepSimulation()
-
-        # Switch back to torque control for the policy
         for name, idx in self._joint_idx.items():
             p.setJointMotorControl2(self._robot_id, int(idx), p.VELOCITY_CONTROL, force=0)
-
         self._step_count = 0
-        self._fell       = False
+        self._fell = False
         self.prev_action = np.zeros(self.action_dim)
         self.prev_smooth_action = np.zeros(self.action_dim)
-        self._prev_pos   = np.array(p.getBasePositionAndOrientation(self._robot_id)[0])
-        
-        # Buffer for action lag simulation
+        self._prev_pos = np.array(p.getBasePositionAndOrientation(self._robot_id)[0])
         self.action_history = [np.zeros(self.action_dim, dtype=np.float32)] * 2
-
+        
+        # Sample command mode
+        mode = np.random.choice([0, 1, 2])
+        if mode == 0:  # Stand still
+            self.command = np.array([0.0, 0.0], dtype=np.float32)
+        elif mode == 1:  # Move forward
+            self.command = np.array([np.random.uniform(0.5, 1.0), 0.0], dtype=np.float32)
+        else:  # Rotate
+            self.command = np.array([0.0, np.random.choice([-1.0, 1.0]) * np.random.uniform(0.5, 1.0)], dtype=np.float32)
+            
         obs = self._get_obs()
-        return obs, {}
+        return (obs, {})
 
-    # ------------------------------------------------------------------
     def step(self, action: np.ndarray):
-        """
-        action : [num_joints] in [-1, 1]
-                 Interpreted as offsets from nominal standing pose (radians).
-                 Scaled by 0.1 rad so max deviation = ±0.1 rad per joint.
-                 PD controller converts target positions to torques.
-        """
         action = np.clip(action, -1.0, 1.0)
-
-        # 1. Action Smoothing (EMA): suppresses 200Hz jitter into fluid patterns
-        # action is raw network output in [-1, 1]
-        smooth_alpha = 0.5
+        smooth_alpha = 0.8
         applied_action = smooth_alpha * action + (1.0 - smooth_alpha) * self.prev_smooth_action
         self.prev_smooth_action = applied_action.copy()
-
-        # target position = nominal pose + scaled action offset
         self.action_history.append(applied_action.copy())
         if len(self.action_history) > 3:
             self.action_history.pop(0)
-
         if np.random.rand() < self.action_lag_prob:
             effective_action = self.action_history[-2]
         else:
             effective_action = action
-
-        # Fixed action scale — no curriculum
         self._global_step += 1
         target_pos = self._nominal_pos + effective_action * self._action_scale
-
         smooth_penalty = np.sum((action - self.prev_action) ** 2)
         self.prev_action = action.copy()
-
-        # Read current joint states for PD computation
-        states    = p.getJointStates(self._robot_id, self._pybullet_indices.tolist())
-        curr_pos  = np.array([s[0] for s in states])
-        curr_vel  = np.array([s[1] for s in states])
-
-        # PD torques
+        states = p.getJointStates(self._robot_id, self._pybullet_indices.tolist())
+        curr_pos = np.array([s[0] for s in states])
+        curr_vel = np.array([s[1] for s in states])
         torques = KP * (target_pos - curr_pos) - KD * curr_vel
         torques = np.clip(torques, -self.effort_limits, self.effort_limits)
-
         for idx, torque in zip(self._pybullet_indices, torques):
-            p.setJointMotorControl2(
-                self._robot_id, int(idx),
-                p.TORQUE_CONTROL,
-                force=float(torque)
-            )
-
+            p.setJointMotorControl2(self._robot_id, int(idx), p.TORQUE_CONTROL, force=float(torque))
         for _ in range(2):
             p.stepSimulation()
-
         self._step_count += 1
-
-        # --- observation ---
         obs = self._get_obs()
-
-        # --- base state ---
         base_pos, base_orn = p.getBasePositionAndOrientation(self._robot_id)
         base_height = base_pos[2]
         roll, pitch, _ = p.getEulerFromQuaternion(base_orn)
-
-        # --- ground contact penalty ---
         contact_penalty = 0.0
         contact_termination = False
-
-        # Check for contacts on non-foot links
         contacts = p.getContactPoints(bodyA=self._robot_id)
         for contact in contacts:
-            # Ignore self-collisions (where body B is also the robot)
             if contact[2] == self._robot_id:
                 continue
-                
-            link_idx = contact[3] # linkIndexA
-
-            if link_idx == -1: 
-                # base_link (torso) touching ground = real fall
-                contact_penalty = -20.0
+            link_idx = contact[3]
+            if link_idx not in self.foot_indices:
+                contact_penalty = -0.5
                 contact_termination = True
                 break
-
-            if link_idx not in self.foot_indices:
-                if link_idx in self.heavy_indices:
-                    contact_penalty = max(contact_penalty, -15.0)
-                else:
-                    contact_penalty = max(contact_penalty, -5.0)
-
-        # --- reward FIRST (mandatory) ---
-        reward = self._compute_reward(
-            obs,
-            torques,
-            smooth_penalty,
-            base_height=base_height
-        )
-        reward += contact_penalty
-
-        # --- termination ---
-        self._fell = base_height < self.height_threshold or contact_termination
+        reward = self._compute_reward(obs, torques, smooth_penalty, base_height=base_height, contact_penalty=contact_penalty)
+        self._fell = base_height < self.height_threshold
         bad_orientation = abs(roll) > 0.8 or abs(pitch) > 0.8
-
-        terminated = self._fell or bad_orientation
-        truncated  = self._step_count >= self.max_episode_steps
-
-        # --- penalty AFTER reward exists ---
-        if terminated:
-            reward -= self.FALL_PENALTY
-
-        # Reward shaping: add survival reward
-        reward += 1.0  # Survive each step
-
-        # Scale down reward to avoid large critic targets
-        reward = reward / 10.0
-
-        # Diagnostic print removed for clean logs
-
-        # Termination reason for debugging
-        term_reason = "running"
+        terminated = self._fell or bad_orientation or contact_termination
+        truncated = self._step_count >= self.max_episode_steps
+        term_reason = 'running'
         if base_height < self.height_threshold:
-            term_reason = "height"
+            term_reason = 'height'
         elif contact_termination:
-            term_reason = "contact"
+            term_reason = 'contact'
         elif bad_orientation:
-            term_reason = "orientation"
+            term_reason = 'orientation'
         elif truncated:
-            term_reason = "truncated"
+            term_reason = 'truncated'
+        info = {'base_height': base_height, 'step': self._step_count, 'fell': self._fell, 'term_reason': term_reason}
+        return (obs, reward, terminated, truncated, info)
 
-        info = {
-            "base_height": base_height,
-            "step": self._step_count,
-            "fell": self._fell,
-            "term_reason": term_reason,
-        }
-
-        return obs, reward, terminated, truncated, info
-
-    # ------------------------------------------------------------------
     def _get_obs(self) -> np.ndarray:
-        """Build 37-dim observation including orientation.
-
-        Velocities are rotated into the BODY frame so the policy learns
-        heading-invariant locomotion.  obs[24] always means 'forward
-        relative to the robot', regardless of world yaw.
-        """
-        states    = p.getJointStates(self._robot_id, self._pybullet_indices.tolist())
+        states = p.getJointStates(self._robot_id, self._pybullet_indices.tolist())
         joint_pos = np.array([s[0] for s in states], dtype=np.float32)
         joint_vel = np.array([s[1] for s in states], dtype=np.float32)
-
         lin_vel, ang_vel = p.getBaseVelocity(self._robot_id)
-        lin_vel = np.array(lin_vel, dtype=np.float32)   # world frame
-        ang_vel = np.array(ang_vel, dtype=np.float32)   # world frame
-
+        lin_vel = np.array(lin_vel, dtype=np.float32)
+        ang_vel = np.array(ang_vel, dtype=np.float32)
         _, base_orn = p.getBasePositionAndOrientation(self._robot_id)
-        quat = np.array(base_orn, dtype=np.float32)   # (qx, qy, qz, qw)
-
-        # Rotation matrix: world -> body  (R^T maps world vectors to body frame)
+        quat = np.array(base_orn, dtype=np.float32)
         rot_mat = np.array(p.getMatrixFromQuaternion(base_orn), dtype=np.float32).reshape(3, 3)
-        lin_vel_body = rot_mat.T @ lin_vel   # body-frame linear velocity
-        ang_vel_body = rot_mat.T @ ang_vel   # body-frame angular velocity
-
-        # Projected gravity in body frame
+        lin_vel_body = rot_mat.T @ lin_vel
+        ang_vel_body = rot_mat.T @ ang_vel
         gravity_body = rot_mat.T @ np.array([0.0, 0.0, -1.0], dtype=np.float32)
-
-        # NEUTRAL YAW: Force yaw to zero in the observation quat
         r = R.from_quat(quat)
         euler = r.as_euler('xyz')
-        # Keep roll and pitch, zero out yaw
         neutral_r = R.from_euler('xyz', [euler[0], euler[1], 0.0])
         neutral_quat = neutral_r.as_quat().astype(np.float32)
-
-        obs = np.concatenate([joint_pos, joint_vel, lin_vel_body, ang_vel_body, neutral_quat, gravity_body])
-        
-        # Add Domain Randomization Noise
+        obs = np.concatenate([joint_pos, joint_vel, lin_vel_body, ang_vel_body, neutral_quat, gravity_body, self.command])
         noise = np.zeros_like(obs)
-        noise[:12]  = np.random.normal(0, self.obs_noise_scale, 12)  # Joint pos noise
-        noise[12:24] = np.random.normal(0, self.vel_noise_scale, 12) # Joint vel noise
-        noise[24:30] = np.random.normal(0, 0.01, 6)                  # Base vel noise
-        
+        n_j = self.action_dim
+        noise[:n_j] = np.random.normal(0, self.obs_noise_scale, n_j)
+        noise[n_j:n_j * 2] = np.random.normal(0, self.vel_noise_scale, n_j)
+        noise[n_j * 2:n_j * 2 + 6] = np.random.normal(0, 0.01, 6)
         return (obs + noise).astype(np.float32)
 
-    # ------------------------------------------------------------------
-    def _compute_reward(self, obs, torques, smooth_penalty, base_height):
+    def _compute_reward(self, obs, torques, smooth_penalty, base_height, contact_penalty=0.0):
         lin_vel = obs[24:27]
         base_pos, base_orn = p.getBasePositionAndOrientation(self._robot_id)
-        roll, pitch, _ = p.getEulerFromQuaternion(base_orn)
-
+        roll, pitch, yaw = p.getEulerFromQuaternion(base_orn)
         forward_vel = float(lin_vel[self.forward_axis])
         lateral_vel = float(lin_vel[1 - self.forward_axis])
-        yaw_rate    = float(obs[29])
+        yaw_rate = float(obs[29])
+        
+        cmd_vx, cmd_wy = self.command
+        
+        r_alive = 1.0
+        
+        # Command tracking rewards
+        lin_vel_error = (forward_vel - cmd_vx)**2
+        ang_vel_error = (yaw_rate - cmd_wy)**2
+        r_tracking_lin = np.exp(-2.0 * lin_vel_error)
+        r_tracking_ang = np.exp(-2.0 * ang_vel_error)
+        r_vel = 1.5 * r_tracking_lin + 1.5 * r_tracking_ang
+        
+        if base_height < self.height_threshold:
+            r_vel = 0.0
+            r_alive = -self.FALL_PENALTY
+            
+        r_stability = -1.0 * (roll ** 2 + pitch ** 2) - 0.5 * abs(lateral_vel)
+        torque_pen = -5e-06 * float(np.sum(torques ** 2))
+        r = r_alive + r_vel + r_stability + torque_pen + contact_penalty
+        return float(np.clip(r, -5.0, 5.0))
 
-        # 1. Forward velocity (Target Enforcement)
-        target_vel = 0.35
-        r_vel = 200.0 * forward_vel
-        # Bonus specifically for reaching the target velocity
-        r_vel += 50.0 * np.exp(-10.0 * (forward_vel - target_vel)**2)
-        
-        # 2. Base Height Reward (Drastically Reduced)
-        target_height = 0.45
-        height_error = base_height - target_height
-        r_height = 5.0 * np.exp(-30.0 * (height_error**2)) # Reduced from 30.0
-        
-        # 3. Stability Penalties
-        r_stability = (
-            -15.0 * (roll**2 + pitch**2)
-            -2.0 * abs(lateral_vel)
-            -1.0 * (yaw_rate ** 2)
-        )
-        
-        # 4. Efficiency & Smoothing (Lifted for Phase 3 to allow dynamic steps)
-        torque_pen = -0.00005 * float(np.sum(torques ** 2))
-        smooth_pen = -0.0001 * smooth_penalty
-        
-        # 5. Survival Bonus ( Severely Reduced to prevent Couch Potato exploit )
-        if base_height < 0.35:
-            r_alive = -10.0  # Punish crouching instantly
-        else:
-            r_alive = 2.0  # Reduced from 20.0
-        
-        r = r_vel + r_height + r_stability + torque_pen + smooth_pen + r_alive
-        
-        # Prevent extremely negative rewards from glitching
-        return float(np.clip(r, -50.0, 300.0))
-
-    # ------------------------------------------------------------------
     def close(self):
         if p.isConnected(self._physics_client):
             p.disconnect(self._physics_client)
-
-
-# -----------------------------------------------------------------------
-# Smoke test
-# -----------------------------------------------------------------------
-if __name__ == "__main__":
-    URDF = (
-        "/mnt/newvolume/Programming/Python/Deep_Learning/"
-        "Relational_Bias_for_Morphological_Generalization/"
-        "morpho_gnn_robot/morpho_ros2_ws/src/morpho_robot/urdf/anymal.urdf"
-    )
-
-    print("Launching RobotEnvBullet smoke test...")
+if __name__ == '__main__':
+    URDF = '/mnt/newvolume/Programming/Python/Deep_Learning/Relational_Bias_for_Morphological_Generalization/morpho_gnn_robot/morpho_ros2_ws/src/morpho_robot/urdf/anymal.urdf'
+    print('Launching RobotEnvBullet smoke test...')
     env = RobotEnvBullet(URDF, max_episode_steps=200, render_mode=None)
     obs, _ = env.reset()
-
-    print(f"  Joint names     : {env.joint_names}")
-    print(f"  Effort limits   : {env.effort_limits}")
-    print(f"  Obs shape       : {obs.shape}  expected (37,)")
-    print(f"  Action dim      : {env.action_dim}  expected 12")
-
+    print(f'  Joint names     : {env.joint_names}')
+    print(f'  Effort limits   : {env.effort_limits}')
+    print(f'  Obs shape       : {obs.shape}  expected (39,)')
+    print(f'  Action dim      : {env.action_dim}  expected 12')
     total_reward = 0.0
     for step in range(100):
-        action = env.action_space.sample() * 0.1   # gentle random actions
+        action = env.action_space.sample() * 0.1
         obs, reward, terminated, truncated, info = env.step(action)
         total_reward += reward
         if terminated or truncated:
-            print(f"  Episode ended at step {step} | fell={info['fell']}")
+            print(f'  Episode ended at step {step} | fell={info['fell']}')
             obs, _ = env.reset()
             break
-
-    print(f"  100-step reward sum : {total_reward:.3f}")
-    print(f"  Final base height   : {info['base_height']:.3f} m")
-
-    # Verify joint ordering matches URDFGraphBuilder
+    print(f'  100-step reward sum : {total_reward:.3f}')
+    print(f'  Final base height   : {info['base_height']:.3f} m')
     import sys
-    sys.path.insert(0, ".")
+    sys.path.insert(0, '.')
     try:
         from urdf_to_graph import URDFGraphBuilder
         builder = URDFGraphBuilder(URDF)
-        assert env.joint_names == builder.joint_names, (
-            f"Joint ordering mismatch!\n  env: {env.joint_names}\n  builder: {builder.joint_names}"
-        )
-        print("  Joint ordering matches URDFGraphBuilder -- obs[:24] maps correctly to graph.")
+        assert env.joint_names == builder.joint_names, f'Joint ordering mismatch!\n  env: {env.joint_names}\n  builder: {builder.joint_names}'
+        print('  Joint ordering matches URDFGraphBuilder -- obs[:24] maps correctly to graph.')
     except ImportError:
-        print("  (urdf_to_graph not in path -- skip ordering check)")
-
+        print('  (urdf_to_graph not in path -- skip ordering check)')
     env.close()
-    print("\nSmoke test passed.")
+    print('\nSmoke test passed.')

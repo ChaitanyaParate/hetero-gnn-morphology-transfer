@@ -16,3 +16,53 @@ yolov8n.pt
 yolov8s.pt
 no_push
 checkpoints
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.venv/
+venv/
+*.egg-info/
+dist/
+*.so
+
+# ROS2 build artifacts
+build/
+install/
+log/
+COLCON_IGNORE
+
+# ML weights and checkpoints
+*.pt
+*.pth
+*.onnx
+*.zip
+checkpoints/
+best_model/
+multi/
+
+# Logs and output
+*.log
+nohup.out
+wandb/
+runs/
+
+# VS Code
+.vscode/
+
+# External dependencies - not your code
+llama.cpp/
+
+# No push folder
+no_push/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Secrets
+.env
+*.env
+*api_key*

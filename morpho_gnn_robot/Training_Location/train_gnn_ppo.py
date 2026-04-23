@@ -1,587 +1,370 @@
-"""
-train_gnn_ppo.py
-
-CleanRL-style PPO adapted for GNN graph observations.
-Runs on Kaggle (T4/P100 GPU, headless, PyBullet DIRECT mode).
-
-Key changes from CleanRL ppo_continuous_action.py:
-    1. obs is a list of PyG Data objects, not a flat tensor
-    2. Minibatch creation uses Batch.from_data_list()
-    3. Graph is built from joint pos/vel plus base orientation, gravity,
-         and base linear/angular velocity at each rollout step
-
-Usage:
-  python train_gnn_ppo.py
-  python train_gnn_ppo.py --seed 1 --total-timesteps 1000000
-
-On Kaggle: set WANDB_API_KEY in Kaggle secrets and --track 1.
-"""
-
 import argparse
 import os
 import random
 import time
 from dataclasses import dataclass
 from typing import List
-
 import numpy as np
 import torch
 import torch.nn as nn
 import torch.optim as optim
 from torch_geometric.data import Data, Batch
+from urdf_to_graph import URDFGraphBuilder
+from robot_env_bullet import RobotEnvBullet
+from gnn_actor_critic import GNNActorCritic
 
-from urdf_to_graph      import URDFGraphBuilder
-from robot_env_bullet   import RobotEnvBullet
-from gnn_actor_critic   import GNNActorCritic
-
-
-# -----------------------------------------------------------------------
-# Running normalizer (Welford online algorithm)
-# -----------------------------------------------------------------------
 class RunningNorm:
-    """
-    Normalizes inputs to zero mean, unit variance using a running estimate.
-    Used for both observations and rewards.
 
-    WHY this matters: joint_pos in [-1.2, 1.2] and joint_vel in [-20, 20]
-    are on different scales. Without normalization the GNN receives poorly
-    scaled inputs and the critic cannot learn returns in the -5000 range.
-    """
-    def __init__(self, shape, clip: float = 10.0):
-        self.mean  = np.zeros(shape, dtype=np.float64)
-        self.var   = np.ones(shape,  dtype=np.float64)
-        self.count = 1e-4
-        self.clip  = clip
+    def __init__(self, shape, clip: float=10.0):
+        self.mean = np.zeros(shape, dtype=np.float64)
+        self.var = np.ones(shape, dtype=np.float64)
+        self.count = 0.0001
+        self.clip = clip
 
     def update(self, x: np.ndarray):
         batch_mean = np.mean(x, axis=0) if x.ndim > 1 else x
-        batch_var  = np.var(x,  axis=0) if x.ndim > 1 else np.zeros_like(x)
-        batch_n    = x.shape[0] if x.ndim > 1 else 1
-        delta      = batch_mean - self.mean
-        tot        = self.count + batch_n
+        batch_var = np.var(x, axis=0) if x.ndim > 1 else np.zeros_like(x)
+        batch_n = x.shape[0] if x.ndim > 1 else 1
+        delta = batch_mean - self.mean
+        tot = self.count + batch_n
         self.mean += delta * batch_n / tot
-        self.var   = (self.var * self.count + batch_var * batch_n +
-                      delta**2 * self.count * batch_n / tot) / tot
+        self.var = (self.var * self.count + batch_var * batch_n + delta ** 2 * self.count * batch_n / tot) / tot
         self.count = tot
 
     def normalize(self, x: np.ndarray) -> np.ndarray:
-        return np.clip((x - self.mean) / (np.sqrt(self.var) + 1e-8),
-                       -self.clip, self.clip).astype(np.float32)
+        return np.clip((x - self.mean) / (np.sqrt(self.var) + 1e-08), -self.clip, self.clip).astype(np.float32)
 
-
-# -----------------------------------------------------------------------
-# Config
-# -----------------------------------------------------------------------
 @dataclass
 class Config:
-    # Environment
-    urdf_path: str = "auto"   # Resolved relative to script local if "auto"
-    max_episode_steps: int = 400
-
-    # Training
-    seed:             int   = 0
-    total_timesteps:  int   = 2_000_000
-    gnn_learning_rate:    float = 4.5e-4
-    actor_learning_rate:  float = 4.5e-4
-    critic_learning_rate: float = 4.5e-4
-    num_steps:        int   = 4096    # rollout length before each update
-    num_minibatches:  int   = 4
-    update_epochs:    int   = 6
-    gamma:            float = 0.99
-    gae_lambda:       float = 0.95
-    clip_coef:        float = 0.15
-    ent_coef:         float = 0.005     # increased entropy for continuous action space exploration
-    vf_coef:          float = 0.5
-    max_grad_norm:    float = 0.5
-    clip_vloss:       bool  = True
-    target_kl:        float = 0.015
+    urdf_path: str = 'auto'
+    max_episode_steps: int = 800
+    seed: int = 0
+    total_timesteps: int = 2000000
+    gnn_learning_rate: float = 0.0002
+    actor_learning_rate: float = 0.0002
+    critic_learning_rate: float = 0.0002
+    num_steps: int = 4096
+    num_minibatches: int = 4
+    update_epochs: int = 6
+    gamma: float = 0.998
+    gae_lambda: float = 0.95
+    clip_coef: float = 0.1
+    ent_coef: float = 0.0005
+    vf_coef: float = 0.5
+    max_grad_norm: float = 0.5
+    clip_vloss: bool = False
+    target_kl: float = 0.025
     resume_path: str = None
-
-    # GNN
-    hidden_dim:  int = 48
-
-    # Logging
-    track:       bool = False    # set True on Kaggle with wandb key
-    run_name:    str  = ""
-    save_every:  int  = 70_000   # checkpoint every N timesteps (default 70,000)
-    checkpoint_dir: str = "./checkpoints"
+    hidden_dim: int = 48
+    track: bool = False
+    run_name: str = ''
+    save_every: int = 70000
+    checkpoint_dir: str = './checkpoints'
 
     @property
     def minibatch_size(self):
         return self.num_steps // self.num_minibatches
 
-
 def parse_args() -> Config:
     cfg = Config()
     parser = argparse.ArgumentParser()
     for f_name, f_val in cfg.__dict__.items():
-        if f_name.startswith("_"):
+        if f_name.startswith('_'):
             continue
         t = type(f_val) if f_val is not None else str
         if isinstance(f_val, bool):
-            parser.add_argument(f"--{f_name.replace('_','-')}", type=int, default=int(f_val))
+            parser.add_argument(f'--{f_name.replace('_', '-')}', type=int, default=int(f_val))
         else:
-            parser.add_argument(f"--{f_name.replace('_','-')}", type=t, default=f_val)
+            parser.add_argument(f'--{f_name.replace('_', '-')}', type=t, default=f_val)
     args = parser.parse_args()
     for f_name in cfg.__dict__:
-        if f_name.startswith("_"):
+        if f_name.startswith('_'):
             continue
-        v = getattr(args, f_name.replace("-", "_"), None)
+        v = getattr(args, f_name.replace('-', '_'), None)
         if v is not None:
             if isinstance(getattr(cfg, f_name), bool):
                 setattr(cfg, f_name, bool(v))
             else:
                 setattr(cfg, f_name, v)
     if not cfg.run_name:
-        cfg.run_name = f"gnn_ppo_seed{cfg.seed}_{int(time.time())}"
-
-    # Kaggle/Local path correction
-    if cfg.urdf_path == "auto":
-        # Look for URDF relative to script location
+        cfg.run_name = f'gnn_ppo_seed{cfg.seed}_{int(time.time())}'
+    if cfg.urdf_path == 'auto':
         base_dir = os.path.dirname(os.path.abspath(__file__))
-        
-        # Priority 1: anymal_stripped.urdf (prevents mesh errors on Kaggle)
-        path = os.path.join(base_dir, "anymal_stripped.urdf")
-        
+        path = os.path.join(base_dir, 'anymal_stripped.urdf')
         if not os.path.exists(path):
-            # Priority 2: Standard repo path
-            path = os.path.join(base_dir, "..", "morpho_ros2_ws", "src", "morpho_robot", "urdf", "anymal.urdf")
-            
+            path = os.path.join(base_dir, '..', 'morpho_ros2_ws', 'src', 'morpho_robot', 'urdf', 'anymal.urdf')
         if not os.path.exists(path):
-            # Priority 3: Fallback for Kaggle if flattened or missing stripped version
-            path = os.path.join(base_dir, "anymal.urdf")
-            
+            path = os.path.join(base_dir, 'anymal.urdf')
         cfg.urdf_path = os.path.abspath(path)
-
     return cfg
 
-
-# -----------------------------------------------------------------------
-# Rollout buffer (graphs stored as list, everything else as tensors)
-# -----------------------------------------------------------------------
 class RolloutBuffer:
+
     def __init__(self, num_steps: int, action_dim: int, device: torch.device):
-        self.num_steps  = num_steps
+        self.num_steps = num_steps
         self.action_dim = action_dim
-        self.device     = device
+        self.device = device
         self.reset()
 
     def reset(self):
-        self.graphs:   List[Data] = []
-        self.actions   = torch.zeros(self.num_steps, self.action_dim,  device=self.device)
-        self.logprobs  = torch.zeros(self.num_steps,                   device=self.device)
-        self.rewards   = torch.zeros(self.num_steps,                   device=self.device)
-        self.dones     = torch.zeros(self.num_steps,                   device=self.device)
-        self.values    = torch.zeros(self.num_steps,                   device=self.device)
-        self.ptr       = 0
+        self.graphs: List[Data] = []
+        self.actions = torch.zeros(self.num_steps, self.action_dim, device=self.device)
+        self.logprobs = torch.zeros(self.num_steps, device=self.device)
+        self.rewards = torch.zeros(self.num_steps, device=self.device)
+        self.dones = torch.zeros(self.num_steps, device=self.device)
+        self.values = torch.zeros(self.num_steps, device=self.device)
+        self.ptr = 0
 
     def store(self, graph, action, logprob, reward, done, value):
         self.graphs.append(graph)
-        self.actions[self.ptr]  = action.squeeze(0)
+        self.actions[self.ptr] = action.squeeze(0)
         self.logprobs[self.ptr] = logprob.squeeze()
-        self.rewards[self.ptr]  = reward
-        self.dones[self.ptr]    = done
-        self.values[self.ptr]   = value.squeeze()
+        self.rewards[self.ptr] = reward
+        self.dones[self.ptr] = done
+        self.values[self.ptr] = value.squeeze()
         self.ptr += 1
 
-    def compute_advantages(
-        self, next_value: torch.Tensor, next_done: float,
-        gamma: float, gae_lambda: float
-    ):
-        """GAE advantage estimation."""
+    def compute_advantages(self, next_value: torch.Tensor, next_done: float, gamma: float, gae_lambda: float):
         advantages = torch.zeros(self.num_steps, device=self.device)
-        last_gae   = 0.0
-        next_val   = next_value.squeeze()
-
+        last_gae = 0.0
+        next_val = next_value.squeeze()
         for t in reversed(range(self.num_steps)):
             if t == self.num_steps - 1:
                 non_terminal = 1.0 - next_done
-                nv           = next_val
+                nv = next_val
             else:
-                non_terminal = 1.0 - self.dones[t + 1]
-                nv           = self.values[t + 1]
-
-            delta     = self.rewards[t] + gamma * nv * non_terminal - self.values[t]
-            last_gae  = delta + gamma * gae_lambda * non_terminal * last_gae
+                non_terminal = 1.0 - self.dones[t]
+                nv = self.values[t + 1]
+            delta = self.rewards[t] + gamma * nv * non_terminal - self.values[t]
+            last_gae = delta + gamma * gae_lambda * non_terminal * last_gae
             advantages[t] = last_gae
-
         returns = advantages + self.values
-        return advantages, returns
+        return (advantages, returns)
 
-
-# -----------------------------------------------------------------------
-# Training
-# -----------------------------------------------------------------------
 def train(cfg: Config):
-    # ---- seeding ----
     random.seed(cfg.seed)
     np.random.seed(cfg.seed)
     torch.manual_seed(cfg.seed)
-
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    print(f"Device: {device}")
-
-    # ---- wandb ----
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    print(f'Device: {device}')
     if cfg.track:
-        import wandb  # type: ignore[import-not-found]
-        wandb.init(project="morpho_gnn_robot", name=cfg.run_name, config=cfg.__dict__)
-
-    # ---- env + builder ----
-    env     = RobotEnvBullet(cfg.urdf_path, max_episode_steps=cfg.max_episode_steps)
+        import wandb
+        wandb.init(project='morpho_gnn_robot', name=cfg.run_name, config=cfg.__dict__)
+    env = RobotEnvBullet(cfg.urdf_path, max_episode_steps=cfg.max_episode_steps)
     builder = URDFGraphBuilder(cfg.urdf_path, add_body_node=True)
-
-    assert env.joint_names == builder.joint_names, (
-        "Joint ordering mismatch between env and builder. This will corrupt your training."
-    )
-
-    # Normalize only joint states (dims 0-30: pos, vel, lin_vel, ang_vel).
-    # Orientation dims 30-37 (quaternion + gravity vector) are NOT normalized.
-    # Quaternions are unit vectors on SO(3) -- applying (q-mean)/std destroys
-    # the geometric meaning and gives the GNN garbage instead of orientation.
-    # Gravity vector is already in [-1,1] by construction.
-    # Joint states need normalization: pos in [-1.2,1.2], vel in [-20,20].
-    OBS_NORM_DIM = 30   # normalize only first 30 dims
+    assert env.joint_names == builder.joint_names, 'Joint ordering mismatch between env and builder. This will corrupt your training.'
+    OBS_NORM_DIM = 30
     obs_norm = RunningNorm(shape=(OBS_NORM_DIM,), clip=10.0)
-
-    # ---- agent ----
-    agent = GNNActorCritic(
-        node_dim   = builder.node_dim,
-        edge_dim   = builder.edge_dim,
-        hidden_dim = cfg.hidden_dim,
-        num_joints = builder.action_dim,
-    ).to(device)
-
-    gnn_params = (
-        list(agent.type_proj.parameters()) +
-        list(agent.conv1.parameters()) +
-        list(agent.norm1.parameters()) +
-        list(agent.conv2.parameters()) +
-        list(agent.norm2.parameters())
-    )
+    agent = GNNActorCritic(node_dim=builder.node_dim, edge_dim=builder.edge_dim, hidden_dim=cfg.hidden_dim, num_joints=builder.action_dim).to(device)
+    gnn_params = list(agent.type_proj.parameters()) + list(agent.conv1.parameters()) + list(agent.norm1.parameters()) + list(agent.conv2.parameters()) + list(agent.norm2.parameters())
     actor_params = list(agent.actor_head.parameters()) + [agent.log_std]
     critic_params = list(agent.critic_head.parameters())
-
-    optimizer = optim.Adam(
-        [
-            {"params": gnn_params, "lr": cfg.gnn_learning_rate},
-            {"params": actor_params, "lr": cfg.actor_learning_rate},
-            {"params": critic_params, "lr": cfg.critic_learning_rate},
-        ],
-        eps=1e-5,
-    )
-    base_lrs = [pg["lr"] for pg in optimizer.param_groups]
-
+    optimizer = optim.Adam([{'params': gnn_params, 'lr': cfg.gnn_learning_rate}, {'params': actor_params, 'lr': cfg.actor_learning_rate}, {'params': critic_params, 'lr': cfg.critic_learning_rate}], eps=1e-05)
+    base_lrs = [pg['lr'] for pg in optimizer.param_groups]
     start_global_step = 0
     episode_rewards: List[float] = []
-
     if cfg.resume_path is not None:
-        print(f"\nLoading checkpoint: {cfg.resume_path}")
+        print(f'\nLoading checkpoint: {cfg.resume_path}')
         checkpoint = torch.load(cfg.resume_path, map_location=device, weights_only=False)
-        agent.load_state_dict(checkpoint["agent"])
-        if "optimizer" in checkpoint:
+        agent.load_state_dict(checkpoint['agent'])
+        if 'optimizer' in checkpoint:
             try:
-                optimizer.load_state_dict(checkpoint["optimizer"])
-                base_lrs = [
-                    cfg.gnn_learning_rate,
-                    cfg.actor_learning_rate,
-                    cfg.critic_learning_rate,
-                ]
+                optimizer.load_state_dict(checkpoint['optimizer'])
+                base_lrs = [cfg.gnn_learning_rate, cfg.actor_learning_rate, cfg.critic_learning_rate]
                 if len(optimizer.param_groups) == len(base_lrs):
                     for lr, pg in zip(base_lrs, optimizer.param_groups):
-                        pg["lr"] = lr
+                        pg['lr'] = lr
                 else:
-                    print(
-                        "Warning: optimizer param group count mismatch; "
-                        "learning rates not overridden from config."
-                    )
+                    print('Warning: optimizer param group count mismatch; learning rates not overridden from config.')
             except Exception as exc:
-                print(f"Warning: could not load optimizer state ({exc}). Using fresh optimizer.")
-        start_global_step = checkpoint.get("global_step", 0)
-        episode_rewards   = checkpoint.get("episode_rewards", [])
-        if "obs_norm_mean" in checkpoint:
-            obs_norm.mean  = checkpoint["obs_norm_mean"]
-            obs_norm.var   = checkpoint["obs_norm_var"]
-            obs_norm.count = checkpoint["obs_norm_count"]
-        print(f"Resumed from step {start_global_step}")
-
-    print(f"\nAgent parameters: {sum(p.numel() for p in agent.parameters()):,}")
-    print(f"Rollout steps: {cfg.num_steps} | Minibatch size: {cfg.minibatch_size}")
-    print(f"Total updates: {cfg.total_timesteps // cfg.num_steps}\n")
-
-    # ---- rollout buffer ----
+                print(f'Warning: could not load optimizer state ({exc}). Using fresh optimizer.')
+        start_global_step = checkpoint.get('global_step', 0)
+        episode_rewards = checkpoint.get('episode_rewards', [])
+        if 'obs_norm_mean' in checkpoint:
+            obs_norm.mean = checkpoint['obs_norm_mean']
+            obs_norm.var = checkpoint['obs_norm_var']
+            obs_norm.count = checkpoint['obs_norm_count']
+        print(f'Resumed from step {start_global_step}')
+    print(f'\nAgent parameters: {sum((p.numel() for p in agent.parameters())):,}')
+    print(f'Rollout steps: {cfg.num_steps} | Minibatch size: {cfg.minibatch_size}')
+    print(f'Total updates: {cfg.total_timesteps // cfg.num_steps}\n')
     buffer = RolloutBuffer(cfg.num_steps, builder.action_dim, device)
-
     os.makedirs(cfg.checkpoint_dir, exist_ok=True)
-
-    # ---- initial reset ----
     obs, _ = env.reset(seed=cfg.seed)
-    done   = False
-
-    global_step      = start_global_step
-    update           = 0
-    episode_lengths: List[int]   = []
+    done = False
+    global_step = start_global_step
+    update = 0
+    episode_lengths: List[int] = []
     episode_forward_vels: List[float] = []
-    ep_reward        = 0.0
-    ep_length        = 0
+    episode_cmd_lin_errors: List[float] = []
+    episode_cmd_ang_errors: List[float] = []
+    ep_reward = 0.0
+    ep_length = 0
     ep_forward_vel_sum = 0.0
-
+    ep_cmd_lin_error_sum = 0.0
+    ep_cmd_ang_error_sum = 0.0
     start_time = time.time()
-
-    # ================================================================
-    # Main training loop
-    # ================================================================
     target_timesteps = cfg.total_timesteps
     while global_step < target_timesteps:
-
-        # ---- learning rate annealing ----
-        frac = 1.0 - (global_step - start_global_step) / (cfg.total_timesteps - start_global_step)
-        frac = max(frac, 0.0)
+        frac = 1.0
         for base_lr, pg in zip(base_lrs, optimizer.param_groups):
-            pg["lr"] = frac * base_lr
-
-        # --------------------------------------------------------
-        # Rollout collection
-        # --------------------------------------------------------
+            pg['lr'] = frac * base_lr
         buffer.reset()
-        agent.to("cpu")
-
+        agent.to('cpu')
         for step in range(cfg.num_steps):
             global_step += 1
-            ep_length   += 1
-
-            # Normalize only joint states (dims 0-30); orientation dims are raw
+            ep_length += 1
             obs_norm.update(obs[:OBS_NORM_DIM])
             obs_n = obs_norm.normalize(obs[:OBS_NORM_DIM])
-
             joint_pos = obs_n[:12]
             joint_vel = obs_n[12:24]
             body_lin_vel = obs_n[24:27]
             body_ang_vel = obs_n[27:30]
-            body_quat = obs[30:34].astype(np.float32)   # unit quaternion -- do not normalize
-            body_grav = obs[34:37].astype(np.float32)   # unit vector -- do not normalize
-            graph = builder.get_graph(
-                joint_pos,
-                joint_vel,
-                body_quat=body_quat,
-                body_grav=body_grav,
-                body_lin_vel=body_lin_vel,
-                body_ang_vel=body_ang_vel,
-            )
-
+            body_quat = obs[30:34].astype(np.float32)
+            body_grav = obs[34:37].astype(np.float32)
+            cmd = obs[37:39].astype(np.float32)
+            graph = builder.get_graph(joint_pos, joint_vel, body_quat=body_quat, body_grav=body_grav, body_lin_vel=body_lin_vel, body_ang_vel=body_ang_vel, command=cmd)
             with torch.no_grad():
                 action, logprob, _, value = agent.get_action_and_value(graph)
-
-            # step env
-            action_np             = action.squeeze(0).cpu().numpy()
+            action_np = action.squeeze(0).cpu().numpy()
             obs, reward, terminated, truncated, info = env.step(action_np)
-            done    = terminated or truncated
+            done = terminated or truncated
             ep_reward += reward
             ep_forward_vel_sum += float(obs[24 + env.forward_axis])
-
-            # store raw (unscaled) reward -- critic learns actual return scale
-            buffer.store(graph.to("cpu"), action.cpu(), logprob.cpu(),
-                         reward, float(done), value.cpu())
-
+            ep_cmd_lin_error_sum += abs(float(obs[24 + env.forward_axis]) - float(cmd[0]))
+            ep_cmd_ang_error_sum += abs(float(obs[29]) - float(cmd[1]))
+            buffer_reward = reward
+            if truncated and (not terminated):
+                with torch.no_grad():
+                    obs_n_final = obs_norm.normalize(obs[:OBS_NORM_DIM])
+                    final_graph = builder.get_graph(obs_n_final[:12], obs_n_final[12:24], body_quat=obs[30:34].astype(np.float32), body_grav=obs[34:37].astype(np.float32), body_lin_vel=obs_n_final[24:27], body_ang_vel=obs_n_final[27:30], command=obs[37:39].astype(np.float32))
+                    final_value = agent.get_value(final_graph).item()
+                buffer_reward += cfg.gamma * final_value
+            buffer.store(graph.to('cpu'), action.cpu(), logprob.cpu(), buffer_reward, float(done), value.cpu())
             if done:
                 episode_rewards.append(ep_reward)
                 episode_lengths.append(ep_length)
                 episode_forward_vels.append(ep_forward_vel_sum / max(ep_length, 1))
-                # Track termination reasons for debugging
-                tr = info.get("term_reason", "unknown")
+                episode_cmd_lin_errors.append(ep_cmd_lin_error_sum / max(ep_length, 1))
+                episode_cmd_ang_errors.append(ep_cmd_ang_error_sum / max(ep_length, 1))
+                tr = info.get('term_reason', 'unknown')
                 if not hasattr(env, '_term_counts'):
                     env._term_counts = {}
                 env._term_counts[tr] = env._term_counts.get(tr, 0) + 1
-                ep_reward  = 0.0
-                ep_length  = 0
+                if not hasattr(env, '_act_mag_sum'):
+                    env._act_mag_sum = 0.0
+                    env._act_mag_n = 0
+                ep_reward = 0.0
+                ep_length = 0
                 ep_forward_vel_sum = 0.0
-                obs, _     = env.reset()
-
-        # next value for GAE bootstrap
+                ep_cmd_lin_error_sum = 0.0
+                ep_cmd_ang_error_sum = 0.0
+                obs, _ = env.reset()
+            if not hasattr(env, '_act_mag_sum'):
+                env._act_mag_sum = 0.0
+                env._act_mag_n = 0
+            env._act_mag_sum += float(np.mean(np.abs(action_np)))
+            env._act_mag_n += 1
         with torch.no_grad():
             obs_norm.update(obs[:OBS_NORM_DIM])
-            obs_n       = obs_norm.normalize(obs[:OBS_NORM_DIM])
-            joint_pos   = obs_n[:12]
-            joint_vel   = obs_n[12:24]
+            obs_n = obs_norm.normalize(obs[:OBS_NORM_DIM])
+            joint_pos = obs_n[:12]
+            joint_vel = obs_n[12:24]
             body_lin_vel = obs_n[24:27]
             body_ang_vel = obs_n[27:30]
-            body_quat   = obs[30:34].astype(np.float32)
-            body_grav   = obs[34:37].astype(np.float32)
-            next_graph = builder.get_graph(
-                joint_pos,
-                joint_vel,
-                body_quat=body_quat,
-                body_grav=body_grav,
-                body_lin_vel=body_lin_vel,
-                body_ang_vel=body_ang_vel,
-            )
-            next_value  = agent.get_value(next_graph)
-
-        advantages, returns = buffer.compute_advantages(
-            next_value.cpu(), float(done), cfg.gamma, cfg.gae_lambda
-        )
-        advantages = (advantages - advantages.mean()) / (advantages.std() + 1e-8)
-
-        # --------------------------------------------------------
-        # PPO update
-        # --------------------------------------------------------
+            body_quat = obs[30:34].astype(np.float32)
+            body_grav = obs[34:37].astype(np.float32)
+            cmd_next = obs[37:39].astype(np.float32)
+            next_graph = builder.get_graph(joint_pos, joint_vel, body_quat=body_quat, body_grav=body_grav, body_lin_vel=body_lin_vel, body_ang_vel=body_ang_vel, command=cmd_next)
+            next_value = agent.get_value(next_graph)
+        advantages, returns = buffer.compute_advantages(next_value.cpu(), float(done), cfg.gamma, cfg.gae_lambda)
+        advantages = (advantages - advantages.mean()) / (advantages.std() + 1e-08)
         agent.to(device)
         update += 1
         indices = np.arange(cfg.num_steps)
-
-        pg_losses, vf_losses, ent_losses = [], [], []
+        pg_losses, vf_losses, ent_losses = ([], [], [])
         clip_fracs = []
         approx_kls = []
-
         for epoch in range(cfg.update_epochs):
             np.random.shuffle(indices)
             early_stop = False
-
             for start in range(0, cfg.num_steps, cfg.minibatch_size):
-                mb_idx = indices[start : start + cfg.minibatch_size]
-
-                # batch graphs for this minibatch
-                mb_batch    = Batch.from_data_list([buffer.graphs[i] for i in mb_idx]).to(device)
-                mb_actions  = buffer.actions[mb_idx].to(device)
-                mb_adv      = advantages[mb_idx].to(device)
-                mb_returns  = returns[mb_idx].to(device)
+                mb_idx = indices[start:start + cfg.minibatch_size]
+                mb_batch = Batch.from_data_list([buffer.graphs[i] for i in mb_idx]).to(device)
+                mb_actions = buffer.actions[mb_idx].to(device)
+                mb_adv = advantages[mb_idx].to(device)
+                mb_returns = returns[mb_idx].to(device)
                 mb_logprobs = buffer.logprobs[mb_idx].to(device)
-
-                _, newlogprob, entropy, newvalue = agent.get_action_and_value(
-                    mb_batch, mb_actions
-                )
+                _, newlogprob, entropy, newvalue = agent.get_action_and_value(mb_batch, mb_actions)
                 newvalue = newvalue.view(-1)
-
-                logratio  = newlogprob - mb_logprobs
-                ratio     = logratio.exp()
-
-                # clip fraction diagnostic
+                logratio = newlogprob - mb_logprobs
+                ratio = logratio.exp()
                 with torch.no_grad():
-                    clip_fracs.append(
-                        ((ratio - 1.0).abs() > cfg.clip_coef).float().mean().item()
-                    )
-                    approx_kls.append(((ratio - 1.0) - logratio).mean().item())
-
-                if cfg.target_kl and np.mean(approx_kls) > cfg.target_kl:
+                    clip_fracs.append(((ratio - 1.0).abs() > cfg.clip_coef).float().mean().item())
+                    approx_kls.append((ratio - 1.0 - logratio).mean().item())
+                if cfg.target_kl and np.mean(approx_kls) > 0.02:
                     early_stop = True
                     break
-
-                # policy loss
                 pg_loss1 = -mb_adv * ratio
                 pg_loss2 = -mb_adv * ratio.clamp(1 - cfg.clip_coef, 1 + cfg.clip_coef)
-                pg_loss  = torch.max(pg_loss1, pg_loss2).mean()
-
-                # value loss
+                pg_loss = torch.max(pg_loss1, pg_loss2).mean()
                 if cfg.clip_vloss:
                     mb_vals = buffer.values[mb_idx].to(device)
-                    v_clipped = mb_vals + (newvalue - mb_vals).clamp(
-                        -cfg.clip_coef, cfg.clip_coef
-                    )
-                    vf_loss = torch.max(
-                        (newvalue   - mb_returns) ** 2,
-                        (v_clipped  - mb_returns) ** 2,
-                    ).mean() * 0.5
+                    v_clipped = mb_vals + (newvalue - mb_vals).clamp(-cfg.clip_coef, cfg.clip_coef)
+                    vf_loss = torch.max((newvalue - mb_returns) ** 2, (v_clipped - mb_returns) ** 2).mean() * 0.5
                 else:
                     vf_loss = ((newvalue - mb_returns) ** 2).mean() * 0.5
-
+                progress = (global_step - start_global_step) / max(cfg.total_timesteps - start_global_step, 1)
+                ent_coef_now = cfg.ent_coef * (1.0 - 0.9 * progress)
                 ent_loss = entropy.mean()
-                loss     = pg_loss - cfg.ent_coef * ent_loss + cfg.vf_coef * vf_loss
-
+                loss = pg_loss - ent_coef_now * ent_loss + cfg.vf_coef * vf_loss
                 optimizer.zero_grad()
                 loss.backward()
                 nn.utils.clip_grad_norm_(agent.parameters(), cfg.max_grad_norm)
                 optimizer.step()
-
                 pg_losses.append(pg_loss.item())
                 vf_losses.append(vf_loss.item())
                 ent_losses.append(ent_loss.item())
-
             if early_stop:
                 break
-
-        # Critic fit quality: how much return variance is explained by value preds.
-        # 1.0 is perfect, ~0 means little predictive power, <0 is very poor.
         y_pred = buffer.values.cpu().numpy()
         y_true = returns.cpu().numpy()
         y_var = np.var(y_true)
         explained_var = np.nan if y_var == 0 else 1.0 - np.var(y_true - y_pred) / y_var
-
-        # --------------------------------------------------------
-        # Logging
-        # --------------------------------------------------------
-        elapsed = max(time.time() - start_time, 1e-8)
+        elapsed = max(time.time() - start_time, 1e-08)
         run_steps = global_step - start_global_step
         sps = int(run_steps / elapsed)
-
         if episode_rewards:
             mean_ep_rew = np.mean(episode_rewards[-20:])
             mean_ep_len = np.mean(episode_lengths[-20:])
             mean_ep_fwd = np.mean(episode_forward_vels[-20:])
+            mean_ep_lin_err = np.mean(episode_cmd_lin_errors[-20:])
+            mean_ep_ang_err = np.mean(episode_cmd_ang_errors[-20:])
         else:
             mean_ep_rew = 0.0
             mean_ep_len = 0.0
             mean_ep_fwd = 0.0
-
-        print(
-            f"step={global_step:>8d} | "
-            f"ep_rew={mean_ep_rew:>8.2f} | "
-            f"ep_len={mean_ep_len:>6.0f} | "
-            f"ep_fwd={mean_ep_fwd:>6.3f} | "
-            f"pg={np.mean(pg_losses):>7.4f} | "
-            f"vf={np.mean(vf_losses):>7.4f} | "
-            f"ent={np.mean(ent_losses):>6.4f} | "
-            f"clip={np.mean(clip_fracs):.3f} | "
-            f"kl={np.mean(approx_kls):.5f} | "
-            f"ev={explained_var:>6.3f} | "
-            f"lr_g={optimizer.param_groups[0]['lr']:.2e} | "
-            f"lr_a={optimizer.param_groups[1]['lr']:.2e} | "
-            f"lr_c={optimizer.param_groups[2]['lr']:.2e} | "
-            f"sps={sps} | "
-            f"term={getattr(env, '_term_counts', {})}"
-        )
-
+            mean_ep_lin_err = 0.0
+            mean_ep_ang_err = 0.0
+        mean_act_mag = env._act_mag_sum / max(env._act_mag_n, 1) if hasattr(env, '_act_mag_sum') else 0.0
+        if hasattr(env, '_act_mag_sum'):
+            env._act_mag_sum = 0.0
+            env._act_mag_n = 0
+        print(f'step={global_step:>8d} | ep_rew={mean_ep_rew:>8.2f} | ep_len={mean_ep_len:>6.0f} | cmd_lin_err={mean_ep_lin_err:>6.3f} | cmd_ang_err={mean_ep_ang_err:>6.3f} | act={mean_act_mag:.3f} | pg={np.mean(pg_losses):>7.4f} | vf={np.mean(vf_losses):>7.4f} | ent={np.mean(ent_losses):>6.4f} | clip={np.mean(clip_fracs):.3f} | kl={np.mean(approx_kls):.5f} | ev={explained_var:>6.3f} | lr_g={optimizer.param_groups[0]['lr']:.2e} | sps={sps}')
         if cfg.track:
-            import wandb  # type: ignore[import-not-found]
-            wandb.log({
-                "charts/ep_reward_mean":   mean_ep_rew,
-                "charts/ep_length_mean":   mean_ep_len,
-                "charts/ep_forward_vel_mean": mean_ep_fwd,
-                "losses/policy_loss":      np.mean(pg_losses),
-                "losses/value_loss":       np.mean(vf_losses),
-                "losses/entropy":          np.mean(ent_losses),
-                "charts/clip_frac":        np.mean(clip_fracs),
-                "losses/approx_kl":        np.mean(approx_kls),
-                "losses/explained_variance": explained_var,
-                "charts/sps":              sps,
-                "charts/learning_rate_gnn":    optimizer.param_groups[0]["lr"],
-                "charts/learning_rate_actor":  optimizer.param_groups[1]["lr"],
-                "charts/learning_rate_critic": optimizer.param_groups[2]["lr"],
-            }, step=global_step)
-
-        # checkpoint
+            import wandb
+            wandb.log({'charts/ep_reward_mean': mean_ep_rew, 'charts/ep_length_mean': mean_ep_len, 'charts/ep_cmd_lin_error_mean': mean_ep_lin_err, 'charts/ep_cmd_ang_error_mean': mean_ep_ang_err, 'losses/policy_loss': np.mean(pg_losses), 'losses/value_loss': np.mean(vf_losses), 'losses/entropy': np.mean(ent_losses), 'charts/clip_frac': np.mean(clip_fracs), 'losses/approx_kl': np.mean(approx_kls), 'losses/explained_variance': explained_var, 'charts/sps': sps, 'charts/learning_rate_gnn': optimizer.param_groups[0]['lr']}, step=global_step)
         if global_step % cfg.save_every < cfg.num_steps:
-            ckpt_path = os.path.join(cfg.checkpoint_dir, f"gnn_ppo_{global_step}.pt")
-            torch.save({
-                "global_step":   global_step,
-                "agent":         agent.state_dict(),
-                "optimizer":     optimizer.state_dict(),
-                "episode_rewards": episode_rewards,
-                "obs_norm_mean": obs_norm.mean,
-                "obs_norm_var":  obs_norm.var,
-                "obs_norm_count": obs_norm.count,
-            }, ckpt_path)
-            print(f"  Checkpoint saved: {ckpt_path}")
-
-    # ---- final save ----
-    final_path = os.path.join(cfg.checkpoint_dir, "gnn_ppo_final.pt")
-    torch.save({"global_step": global_step, "agent": agent.state_dict()}, final_path)
-    print(f"\nTraining complete. Final checkpoint: {final_path}")
-
+            ckpt_path = os.path.join(cfg.checkpoint_dir, f'gnn_ppo_{global_step}.pt')
+            torch.save({'global_step': global_step, 'agent': agent.state_dict(), 'optimizer': optimizer.state_dict(), 'episode_rewards': episode_rewards, 'obs_norm_mean': obs_norm.mean, 'obs_norm_var': obs_norm.var, 'obs_norm_count': obs_norm.count}, ckpt_path)
+            print(f'  Checkpoint saved: {ckpt_path}')
+    final_path = os.path.join(cfg.checkpoint_dir, 'gnn_ppo_final.pt')
+    torch.save({'global_step': global_step, 'agent': agent.state_dict()}, final_path)
+    print(f'\nTraining complete. Final checkpoint: {final_path}')
     env.close()
     if cfg.track:
-        import wandb  # type: ignore[import-not-found]
+        import wandb
         wandb.finish()
-
-
-if __name__ == "__main__":
+if __name__ == '__main__':
     cfg = parse_args()
     train(cfg)
