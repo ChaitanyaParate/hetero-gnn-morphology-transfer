@@ -20,9 +20,9 @@ NOMINAL_POSE_PER_JOINT = {'LF_HAA': 0.0, 'LF_HFE': 0.6, 'LF_KFE': -1.2, 'RF_HAA'
 
 class RobotEnvBullet(gym.Env):
     metadata = {'render_modes': ['human', 'direct']}
-    FALL_PENALTY = 100.0
+    FALL_PENALTY = 250.0   # match MLP
 
-    def __init__(self, urdf_path: str, max_episode_steps: int=1000, render_mode: str=None, forward_axis: int=0, height_threshold: float=0.22):
+    def __init__(self, urdf_path: str, max_episode_steps: int=1000, render_mode: str=None, forward_axis: int=0, height_threshold: float=0.25):
         super().__init__()
         self.urdf_path = urdf_path
         self.max_episode_steps = max_episode_steps
@@ -50,7 +50,7 @@ class RobotEnvBullet(gym.Env):
         self._step_count = 0
         self._fell = False
         self.prev_action = np.zeros(self.action_dim)
-        self._global_step = 0
+        self.prev_smooth_action = np.zeros(self.action_dim)
         self._action_scale = 0.6
 
     def _parse_urdf(self):
@@ -145,7 +145,6 @@ class RobotEnvBullet(gym.Env):
             effective_action = self.action_history[-2]
         else:
             effective_action = action
-        self._global_step += 1
         target_pos = self._nominal_pos + effective_action * self._action_scale
         smooth_penalty = np.sum((action - self.prev_action) ** 2)
         self.prev_action = action.copy()

@@ -26,7 +26,8 @@ class SlimHeteroGNNActorCritic(nn.Module):
         self.norm2 = nn.LayerNorm(hidden_dim)
         self.actor_head = nn.Sequential(_layer_init(nn.Linear(hidden_dim, 32), std=1.0), nn.Tanh(), _layer_init(nn.Linear(32, 1), std=0.01))
         self.log_std = nn.Parameter(torch.full((num_joints,), -1.6))
-        self.critic_head = nn.Sequential(_layer_init(nn.Linear(hidden_dim, 32), std=1.0), nn.Tanh(), _layer_init(nn.Linear(32, 1), std=1.0))
+        # Critic head takes concatenated body_h and global_max_pool(h) -> dimension is hidden_dim * 2
+        self.critic_head = nn.Sequential(_layer_init(nn.Linear(hidden_dim * 2, 32), std=1.0), nn.ELU(), _layer_init(nn.Linear(32, 1), std=1.0))
 
     def _project(self, x: torch.Tensor, node_types: torch.Tensor) -> torch.Tensor:
         h = torch.empty(x.size(0), self.hidden_dim, device=x.device, dtype=x.dtype)
@@ -59,13 +60,21 @@ class SlimHeteroGNNActorCritic(nn.Module):
 
     def get_value(self, data: Data) -> torch.Tensor:
         h, batch = self._encode(data)
-        # Use body node (index 0 per graph) for value — it has full proprioceptive context
+        # Extract body node (index 0 per graph) for undiluted command/base state
         ptr = getattr(data, 'ptr', None)
         if ptr is None:
             body_h = h[0:1]
         else:
-            body_h = h[ptr[:-1]]  # first node of each graph in batch
-        return self.critic_head(body_h)
+            body_h = h[ptr[:-1]]
+            
+        # Use global max pool so the critic preserves gait phase information
+        # (mean pooling averages out symmetric leg movements, causing ev=0)
+        from torch_geometric.nn import global_max_pool
+        pool_h = global_max_pool(h, batch)
+        
+        # Concatenate body and pooled features, and detach to prevent critic gradients from destroying the shared GNN trunk
+        value_h = torch.cat([body_h, pool_h], dim=-1)
+        return self.critic_head(value_h.detach())
 
     def get_action_and_value(self, data: Data, action: torch.Tensor=None):
         h, batch = self._encode(data)
@@ -80,13 +89,19 @@ class SlimHeteroGNNActorCritic(nn.Module):
             action = dist.sample()
         log_prob = dist.log_prob(action).sum(dim=-1)
         entropy = dist.entropy().sum(dim=-1)
-        # Critic: use body node (index 0 per graph) for richer value estimate
+        # Critic: use global max pool to preserve phase information + body node for global state
+        from torch_geometric.nn import global_max_pool
         ptr = getattr(data, 'ptr', None)
         if ptr is None:
             body_h = h[0:1]
         else:
             body_h = h[ptr[:-1]]
-        value = self.critic_head(body_h)
+            
+        pool_h = global_max_pool(h, batch)
+        value_h = torch.cat([body_h, pool_h], dim=-1)
+        
+        # Detach to prevent large unclipped critic gradients from causing catastrophic policy collapse
+        value = self.critic_head(value_h.detach())
         return (action, log_prob, entropy, value)
 GNNActorCritic = SlimHeteroGNNActorCritic
 HeteroGNNActorCritic = SlimHeteroGNNActorCritic

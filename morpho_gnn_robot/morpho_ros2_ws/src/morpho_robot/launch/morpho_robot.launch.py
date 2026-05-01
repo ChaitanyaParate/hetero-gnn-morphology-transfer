@@ -221,7 +221,7 @@ def generate_launch_description():
     # -----------------------------------------------------------------------
 
     spawn_robot = TimerAction(
-        period=2.0,
+        period=5.0,  # increased: Gazebo needs ~5s to fully load world before spawn
         actions=[
             Node(
                 package="ros_gz_sim",
@@ -274,7 +274,7 @@ def generate_launch_description():
     #    ----------------------------------------------------------------
 
     gz_bridge = TimerAction(
-        period=4.0,   # wait for Gazebo + spawn to finish
+        period=9.0,   # wait for Gazebo + spawn to fully finish
         actions=[
             Node(
                 package="ros_gz_bridge",

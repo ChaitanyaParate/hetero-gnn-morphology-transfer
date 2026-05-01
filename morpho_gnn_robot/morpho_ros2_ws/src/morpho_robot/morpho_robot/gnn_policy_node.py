@@ -23,13 +23,14 @@ POSITION_SCALE = 0.6
 JOINT_COMMAND_FMT = '/model/robot/joint/{}/cmd_pos'
 HIDDEN_DIM = 48
 NOMINAL_POSE_PER_JOINT = {'LF_HAA': 0.0, 'LF_HFE': 0.6, 'LF_KFE': -1.2, 'RF_HAA': 0.0, 'RF_HFE': 0.6, 'RF_KFE': -1.2, 'LH_HAA': 0.0, 'LH_HFE': -0.6, 'LH_KFE': 1.2, 'RH_HAA': 0.0, 'RH_HFE': -0.6, 'RH_KFE': 1.2}
-ACTION_SMOOTH_ALPHA = 0.8
-MAX_CMD_STEP = 0.2
+ACTION_SMOOTH_ALPHA = 0.6   # reduced from 0.8 — allows faster leg motion changes
+MAX_CMD_STEP = 0.5          # increased: was 0.2 which suppressed front-leg oscillations
 STARTUP_HOLD_TICKS = 400
-YAW_KP = 0.0
-YAW_KD = 0.0
-LEFT_HAA_IDX = [0, 3]
-RIGHT_HAA_IDX = [6, 9]
+# Yaw-rate PI controller: corrects circular drift via HAA joint offsets (post-action).
+# HAA (hip abductor) joints are nudged to steer the body without changing the GNN command.
+YAW_RATE_KP  = 0.35   # conservative P gain — avoid disrupting forward motion
+YAW_RATE_KI  = 0.02   # small I gain — slow accumulation to fix steady-state circle
+YAW_RATE_LPF = 0.90   # heavy low-pass — smooth out footfall noise in yaw rate
 
 class RunningNorm:
 
@@ -60,9 +61,10 @@ class GNNPolicyNode(Node):
         self._world_ang_vel = np.zeros(3)
         self._prev_action = np.zeros(self.builder.action_dim, dtype=np.float32)
         self._prev_cmd_pos = np.array([NOMINAL_POSE_PER_JOINT.get(j, 0.0) for j in self.builder.joint_names], dtype=np.float32)
-        self._target_cmd = np.array([0.0, 0.0], dtype=np.float32)
+        self._target_cmd = np.array([0.5, 0.0], dtype=np.float32)  # default: walk forward until LLM sets a goal
         self._ticks = 0
-        self._prev_yaw_rate = 0.0
+        self._yaw_rate_filtered = 0.0   # low-pass filtered yaw rate for stable correction
+        self._yaw_integral = 0.0        # integral of yaw error for steady-state correction
         self._startup_hold_ticks = STARTUP_HOLD_TICKS
         self._obs_ready = False
         from rclpy.qos import qos_profile_sensor_data
@@ -167,30 +169,61 @@ class GNNPolicyNode(Node):
         n_v = norm_state[12:24]
         n_blv = norm_state[24:27]
         n_bav = norm_state[27:30]
-        graph = self.builder.get_graph(joint_pos=n_p, joint_vel=n_v, body_quat=bqv, body_grav=bgv, body_lin_vel=n_blv, body_ang_vel=n_bav, command=target_cmd)
+        # Feed GNN the command, clamped to plausible ranges.
+        # vx: clamp to training range [0.5, 1.0] for forward walking.
+        # wy: allow small turning signal (clamped to ±0.3) — completely zeroing wy
+        #     prevents the robot from turning when commanded. The GNN only saw wy=0
+        #     during training, but small wy values are close to its distribution.
+        gnn_cmd = np.array([
+            float(np.clip(target_cmd[0], 0.5, 1.0)),          # clamp vx to training range
+            float(np.clip(target_cmd[1], -0.3, 0.3)),         # allow small wy for turns
+        ], dtype=np.float32)
+        graph = self.builder.get_graph(joint_pos=n_p, joint_vel=n_v, body_quat=bqv, body_grav=bgv, body_lin_vel=n_blv, body_ang_vel=n_bav, command=gnn_cmd)
         batch = Batch.from_data_list([graph]).to(self.device)
         with torch.no_grad():
             joint_h = self.model._joint_embeddings(self.model._encode(batch)[0], batch)
             action = self.model.actor_head(joint_h).view(1, self.model.num_joints)
         action_np = action.squeeze(0).cpu().numpy()
         action_np = np.clip(action_np, -1.0, 1.0)
+
+        # --- Yaw-rate feedback (post-action HAA correction) ---
+        # KEY: GNN was trained with wy=ALWAYS 0.0, so injecting wy != 0 is OOD.
+        # Instead, correct yaw drift by offsetting the HAA (hip abductor) joints
+        # directly AFTER getting the GNN action. This is in-distribution.
+        actual_yaw_rate = float(bav[2])
+        self._yaw_rate_filtered = (
+            YAW_RATE_LPF * self._yaw_rate_filtered
+            + (1.0 - YAW_RATE_LPF) * actual_yaw_rate
+        )
+        yaw_error = self._yaw_rate_filtered - float(target_cmd[1])  # target_cmd[1] is always ~0
+        # Integrate yaw error (clamped to prevent windup)
+        self._yaw_integral = float(np.clip(self._yaw_integral + yaw_error * 0.005, -0.3, 0.3))
+        # HAA correction: when drifting right (-yaw_rate), abduct left legs more
+        # and adduct right legs — pushes body back left.
+        # HAA joint indices: LF=0, LH=3, RF=6, RH=9
+        haa_correction = float(np.clip(
+            YAW_RATE_KP * yaw_error + YAW_RATE_KI * self._yaw_integral,
+            -0.12, 0.12))  # conservative clamp — large values block forward motion
+        action_np[[0, 3]] -= haa_correction   # left legs: +correction when drifting right
+        action_np[[6, 9]] += haa_correction   # right legs: −correction when drifting right
+        action_np = np.clip(action_np, -1.0, 1.0)
+        # Clamp vx to training range [0.5, 1.0] — GNN never saw vx < 0.5
+        vx_cmd = float(np.clip(target_cmd[0], 0.5, 1.0))
+        if self._ticks % 200 == 0:
+            self.get_logger().info(
+                f'yaw={actual_yaw_rate:.3f} filt={self._yaw_rate_filtered:.3f} '
+                f'err={yaw_error:.3f} integ={self._yaw_integral:.3f} '
+                f'haa_corr={haa_correction:+.3f} vx={vx_cmd:.2f}'
+            )
+        # Apply action smoothing
         action_np = (1.0 - ACTION_SMOOTH_ALPHA) * self._prev_action + ACTION_SMOOTH_ALPHA * action_np
         self._prev_action = action_np.copy()
-        yaw_rate = float(bav[2])
-        yaw_rate_dot = yaw_rate - self._prev_yaw_rate
-        self._prev_yaw_rate = yaw_rate
-        yaw_correction = YAW_KP * yaw_rate + YAW_KD * yaw_rate_dot
-        for idx in LEFT_HAA_IDX:
-            action_np[idx] -= yaw_correction
-        for idx in RIGHT_HAA_IDX:
-            action_np[idx] += yaw_correction
-        action_np = np.clip(action_np, -1.0, 1.0)
         ramp_ticks = 400
         ramp_factor = max(0.0, min(1.0, float(self._ticks) / ramp_ticks))
         cmd_pos = []
         for i, jname in enumerate(self.builder.joint_names):
             nominal = NOMINAL_POSE_PER_JOINT.get(jname, 0.0)
-            target = nominal + float(action_np[i] * POSITION_SCALE * ramp_factor)
+            target = nominal + float(action_np[i]) * POSITION_SCALE * ramp_factor
             delta = target - float(self._prev_cmd_pos[i])
             delta = float(np.clip(delta, -MAX_CMD_STEP, MAX_CMD_STEP))
             target = float(self._prev_cmd_pos[i] + delta)

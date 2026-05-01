@@ -37,25 +37,27 @@ class RunningNorm:
 @dataclass
 class Config:
     urdf_path: str = 'auto'
-    max_episode_steps: int = 800
+    max_episode_steps: int = 1000          # match MLP
     seed: int = 0
-    total_timesteps: int = 2000000
-    gnn_learning_rate: float = 0.0002
-    actor_learning_rate: float = 0.0002
-    critic_learning_rate: float = 0.0002
-    num_steps: int = 8192
+    total_timesteps: int = 12000000        # match MLP
+    gnn_learning_rate: float = 0.00068    # match MLP trunk LR
+    actor_learning_rate: float = 0.00045  # match MLP actor LR
+    critic_learning_rate: float = 0.00045 # match MLP critic LR
+    num_steps: int = 8192                  # user requested (larger batch = lower variance)
     num_minibatches: int = 4
     update_epochs: int = 6
     gamma: float = 0.99
     gae_lambda: float = 0.95
-    clip_coef: float = 0.1
-    ent_coef: float = 0.0005
+    clip_coef: float = 0.15               # match MLP
+    ent_coef: float = 0.005               # starting entropy coefficient
+    ent_coef_end: float = 0.0             # linearly decayed to zero to allow policy to converge
     vf_coef: float = 0.5
     max_grad_norm: float = 0.5
-    clip_vloss: bool = False
-    target_kl: float = 0.01
+    clip_vloss: bool = False              # disabled: clipping unnormalized large returns causes ev=0 gradient freezing
+    target_kl: float = 0.015             # match MLP
     resume_path: str = None
-    hidden_dim: int = 48
+    resume_optimizer: bool = True         # match MLP flag
+    hidden_dim: int = 48                  # keep GNN-appropriate size
     track: bool = False
     run_name: str = ''
     save_every: int = 70000
@@ -133,7 +135,7 @@ class RolloutBuffer:
                 non_terminal = 1.0 - next_done
                 nv = next_val
             else:
-                non_terminal = 1.0 - self.dones[t]
+                non_terminal = 1.0 - self.dones[t + 1]  # BUG FIX: was dones[t]
                 nv = self.values[t + 1]
             delta = self.rewards[t] + gamma * nv * non_terminal - self.values[t]
             last_gae = delta + gamma * gae_lambda * non_terminal * last_gae
@@ -167,7 +169,7 @@ def train(cfg: Config):
         print(f'\nLoading checkpoint: {cfg.resume_path}')
         checkpoint = torch.load(cfg.resume_path, map_location=device, weights_only=False)
         agent.load_state_dict(checkpoint['agent'])
-        if 'optimizer' in checkpoint:
+        if cfg.resume_optimizer and 'optimizer' in checkpoint:
             try:
                 optimizer.load_state_dict(checkpoint['optimizer'])
                 base_lrs = [cfg.gnn_learning_rate, cfg.actor_learning_rate, cfg.critic_learning_rate]
@@ -175,9 +177,11 @@ def train(cfg: Config):
                     for lr, pg in zip(base_lrs, optimizer.param_groups):
                         pg['lr'] = lr
                 else:
-                    print('Warning: optimizer param group count mismatch; learning rates not overridden from config.')
+                    print('Warning: optimizer param group count mismatch; LRs not overridden.')
             except Exception as exc:
                 print(f'Warning: could not load optimizer state ({exc}). Using fresh optimizer.')
+        elif not cfg.resume_optimizer:
+            print('Resume: skipping optimizer state per resume_optimizer=0')
         start_global_step = checkpoint.get('global_step', 0)
         episode_rewards = checkpoint.get('episode_rewards', [])
         if 'obs_norm_mean' in checkpoint:
@@ -206,11 +210,16 @@ def train(cfg: Config):
     start_time = time.time()
     target_timesteps = cfg.total_timesteps
     while global_step < target_timesteps:
-        frac = 1.0
+        # Linear LR/ent decay based on ABSOLUTE step position — do NOT use start_global_step
+        # (relative formula resets LR to 100% on every resume, causing catastrophic collapse)
+        frac = 1.0 - global_step / max(cfg.total_timesteps, 1)
+        frac = max(frac, 0.0)
         for base_lr, pg in zip(base_lrs, optimizer.param_groups):
             pg['lr'] = frac * base_lr
+        # Linear entropy coefficient decay: start at ent_coef, anneal to ent_coef_end
+        current_ent_coef = cfg.ent_coef_end + frac * (cfg.ent_coef - cfg.ent_coef_end)
         buffer.reset()
-        agent.to('cpu')
+        # Stay on GPU throughout rollout (no CPU/GPU switching)
         for step in range(cfg.num_steps):
             global_step += 1
             ep_length += 1
@@ -224,6 +233,7 @@ def train(cfg: Config):
             body_grav = obs[34:37].astype(np.float32)
             cmd = obs[37:39].astype(np.float32)
             graph = builder.get_graph(joint_pos, joint_vel, body_quat=body_quat, body_grav=body_grav, body_lin_vel=body_lin_vel, body_ang_vel=body_ang_vel, command=cmd)
+            graph = graph.to(device)  # builder always returns CPU tensors
             with torch.no_grad():
                 action, logprob, _, value = agent.get_action_and_value(graph)
             action_np = action.squeeze(0).cpu().numpy()
@@ -238,9 +248,9 @@ def train(cfg: Config):
                 with torch.no_grad():
                     obs_n_final = obs_norm.normalize(obs[:OBS_NORM_DIM])
                     final_graph = builder.get_graph(obs_n_final[:12], obs_n_final[12:24], body_quat=obs[30:34].astype(np.float32), body_grav=obs[34:37].astype(np.float32), body_lin_vel=obs_n_final[24:27], body_ang_vel=obs_n_final[27:30], command=obs[37:39].astype(np.float32))
-                    final_value = agent.get_value(final_graph).item()
+                    final_value = agent.get_value(final_graph.to(device)).item()
                 buffer_reward += cfg.gamma * final_value
-            buffer.store(graph.to('cpu'), action.cpu(), logprob.cpu(), buffer_reward, float(done), value.cpu())
+            buffer.store(graph, action, logprob, buffer_reward, float(done), value)
             if done:
                 episode_rewards.append(ep_reward)
                 episode_lengths.append(ep_length)
@@ -276,10 +286,9 @@ def train(cfg: Config):
             body_grav = obs[34:37].astype(np.float32)
             cmd_next = obs[37:39].astype(np.float32)
             next_graph = builder.get_graph(joint_pos, joint_vel, body_quat=body_quat, body_grav=body_grav, body_lin_vel=body_lin_vel, body_ang_vel=body_ang_vel, command=cmd_next)
-            next_value = agent.get_value(next_graph)
-        advantages, returns = buffer.compute_advantages(next_value.cpu(), float(done), cfg.gamma, cfg.gae_lambda)
+            next_value = agent.get_value(next_graph.to(device))
+        advantages, returns = buffer.compute_advantages(next_value, float(done), cfg.gamma, cfg.gae_lambda)
         advantages = (advantages - advantages.mean()) / (advantages.std() + 1e-08)
-        agent.to(device)
         update += 1
         indices = np.arange(cfg.num_steps)
         pg_losses, vf_losses, ent_losses = ([], [], [])
@@ -302,7 +311,7 @@ def train(cfg: Config):
                 with torch.no_grad():
                     clip_fracs.append(((ratio - 1.0).abs() > cfg.clip_coef).float().mean().item())
                     approx_kls.append((ratio - 1.0 - logratio).mean().item())
-                if cfg.target_kl and np.mean(approx_kls) > 0.02:
+                if cfg.target_kl and np.mean(approx_kls) > cfg.target_kl:
                     early_stop = True
                     break
                 pg_loss1 = -mb_adv * ratio
@@ -314,10 +323,8 @@ def train(cfg: Config):
                     vf_loss = torch.max((newvalue - mb_returns) ** 2, (v_clipped - mb_returns) ** 2).mean() * 0.5
                 else:
                     vf_loss = ((newvalue - mb_returns) ** 2).mean() * 0.5
-                progress = (global_step - start_global_step) / max(cfg.total_timesteps - start_global_step, 1)
-                ent_coef_now = cfg.ent_coef * (1.0 - 0.9 * progress)
                 ent_loss = entropy.mean()
-                loss = pg_loss - ent_coef_now * ent_loss + cfg.vf_coef * vf_loss
+                loss = pg_loss - current_ent_coef * ent_loss + cfg.vf_coef * vf_loss
                 optimizer.zero_grad()
                 loss.backward()
                 nn.utils.clip_grad_norm_(agent.parameters(), cfg.max_grad_norm)
@@ -359,7 +366,13 @@ def train(cfg: Config):
             torch.save({'global_step': global_step, 'agent': agent.state_dict(), 'optimizer': optimizer.state_dict(), 'episode_rewards': episode_rewards, 'obs_norm_mean': obs_norm.mean, 'obs_norm_var': obs_norm.var, 'obs_norm_count': obs_norm.count}, ckpt_path)
             print(f'  Checkpoint saved: {ckpt_path}')
     final_path = os.path.join(cfg.checkpoint_dir, 'gnn_ppo_final.pt')
-    torch.save({'global_step': global_step, 'agent': agent.state_dict()}, final_path)
+    torch.save({
+        'global_step': global_step,
+        'agent': agent.state_dict(),
+        'obs_norm_mean': obs_norm.mean,
+        'obs_norm_var': obs_norm.var,
+        'obs_norm_count': obs_norm.count,
+    }, final_path)
     print(f'\nTraining complete. Final checkpoint: {final_path}')
     env.close()
     if cfg.track:

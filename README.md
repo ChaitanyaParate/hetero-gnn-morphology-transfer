@@ -157,9 +157,11 @@ A `gymnasium.Env` wrapping PyBullet physics:
 | Action smoothing | α=0.8 exponential moving average |
 
 **Termination conditions:**
-- Base height < 0.22 m (fall)
+- Base height < 0.25 m (fall) — synced with MLP baseline
 - |roll| or |pitch| > 0.8 rad (tilt)
 - Non-foot link contact with ground
+
+**Fall penalty:** 250.0 (synced with MLP baseline — strong signal to avoid falls rather than tolerate them)
 
 **Command-conditioned training:** At each episode reset, a random command mode is sampled:
 - Stand still: `[vx=0, wy=0]`
@@ -180,20 +182,22 @@ Standard CleanRL-style PPO with graph-batched rollouts via `torch_geometric.data
 
 | Hyperparameter | Value |
 |---|---|
-| Total timesteps | 2,000,000 |
+| Total timesteps | 12,000,000 |
 | Rollout steps per update | 4,096 |
 | Minibatch size | 1,024 (4 minibatches) |
 | Update epochs | 6 |
-| Discount γ | 0.998 |
+| Discount γ | 0.99 |
 | GAE λ | 0.95 |
-| PPO clip ε | 0.1 |
-| Entropy coef | 0.0005 (annealed to 10% by end) |
+| PPO clip ε | 0.15 |
+| Entropy coef | 0.005 (fixed) |
 | Value loss coef | 0.5 |
+| Clip value loss | True |
 | Max grad norm | 0.5 |
-| Target KL (early stop) | 0.025 |
-| Learning rate (GNN) | 2e-4 |
-| Learning rate (actor) | 2e-4 |
-| Learning rate (critic) | 2e-4 |
+| Target KL (early stop) | 0.015 |
+| Learning rate (GNN trunk) | 6.8e-4 |
+| Learning rate (actor head) | 4.5e-4 |
+| Learning rate (critic head) | 4.5e-4 |
+| LR schedule | Linear decay to 0 |
 | Hidden dim | 48 |
 
 **Separate parameter groups:** GNN layers, actor head, and critic head each have their own Adam optimizer group, allowing independent LR scheduling.
@@ -247,10 +251,15 @@ A single-process runner that:
 
 **File (ROS2):** `morpho_gnn_robot/morpho_ros2_ws/src/morpho_robot/morpho_robot/llm_planner_node.py`
 
-A ROS2 node (`llm_planner_node`) that:
-- Subscribes to `/scene_graph` (JSON string)
-- Calls Ollama (Llama 3.1 8B or Qwen 2.5 7B) every N seconds
-- Publishes structured JSON plan to `/llm_action`: `{ skill, target, params }`
+A ROS2 node (`llm_planner_node`) with a **two-tier planning architecture**:
+- **Fast reactive path (0.5 s interval):** Pure rule-based `reactive_fallback()` using depth sensor readings. Selects `trot`, `turn_left`, or `turn_right` based on front/side distances. Includes a `SIDE_WALL_MIN=1.5m` guard to prevent turning into a close side wall (which causes roll instability).
+- **Slow LLM path (5.0 s interval):** Calls Ollama (Qwen 2.5 7B default) and publishes structured JSON plan to `/llm_action`: `{ skill, target, params }`. Falls back gracefully to reactive mode when Ollama is unavailable.
+
+**File:** `morpho_gnn_robot/morpho_ros2_ws/src/morpho_robot/morpho_robot/vision_node.py`
+
+YOLOv8 + depth camera perception node:
+- Publishes scene graph JSON to `/scene_graph` with detected objects and obstacle distances
+- **Ground-filtered depth ROI:** Only reads image rows 10%–55% from top to exclude ground/floor pixels when the robot pitches forward. Prevents false obstacle triggers from floor detections.
 
 **File:** `morpho_gnn_robot/morpho_ros2_ws/src/morpho_robot/morpho_robot/skill_translator_node.py`
 
@@ -263,16 +272,25 @@ The `skill_translator_node` bridges high-level plans to navigation goals:
 
 ### 7. ROS2 / Gazebo Deployment Stack
 
-**File:** `morpho_gnn_robot/morpho_ros2_ws/src/morpho_robot/morpho_robot/gnn_policy_node.py`
+Two policy nodes are available, selected via the `policy_type` launch argument:
 
-The `gnn_policy_node` runs the trained GNN policy in closed-loop at **200 Hz**:
+**`MLP_policy_node.py`** *(currently deployed — stable locomotion confirmed)*
+- Runs the MLP baseline policy (`mlp_ppo_10223616.pt`) at **200 Hz**
+- Differential steering via `steer_bias` (±0.08) applied to left/right leg action scaling
+- Telemetry: pitch, roll (corrected formula: `arctan2(y, -z)`), and L/R action magnitude
+- Roll warning threshold: 15°
 
+**`gnn_policy_node.py`** *(in development — GNN retraining in progress)*
+- Runs `SlimHeteroGNNActorCritic` at **200 Hz**
 - Subscribes to `/joint_states` and `/odom`
-- Converts world-frame velocities to body-frame using rotation matrix from odometry quaternion
-- Runs `SlimHeteroGNNActorCritic.get_action_and_value()` on every tick
-- Applies a 400-tick linear ramp-up to avoid impulse joint commands at startup
-- Applies a yaw-rate PD correction to HAA joints for improved heading stability
-- Publishes per-joint `Float64` position commands on `/model/robot/joint/{name}/cmd_pos`
+- Converts world-frame velocities to body-frame using quaternion rotation
+- 400-tick linear ramp-up on startup to avoid joint impulses
+- Yaw-rate PD correction on HAA joints for heading stability
+
+**Common infrastructure:**
+- `parameter_bridge` (gz-ros2): bridges Gazebo topics ↔ ROS2
+- `warehouse_world.sdf`: Gazebo world (robot spawned separately via `spawn_entity` — no embedded URDF include to prevent ghost-model conflicts)
+- Publishes per-joint `Float64` commands on `/model/robot/joint/{name}/cmd_pos`
 
 ---
 
@@ -395,19 +413,32 @@ pip install ollama rclpy
 ```bash
 cd morpho_gnn_robot/Training_Location
 
+# Default run (12M steps, MLP-aligned hyperparameters)
 python train_gnn_ppo.py
 
+# Custom run
 python train_gnn_ppo.py \
-  --total-timesteps 7000000 \
-  --gnn-learning-rate 0.0002 \
+  --total-timesteps 12000000 \
+  --gnn-learning-rate 0.00068 \
+  --actor-learning-rate 0.00045 \
+  --critic-learning-rate 0.00045 \
   --num-steps 4096 \
+  --clip-coef 0.15 \
   --hidden-dim 48 \
   --seed 0 \
   --checkpoint-dir ./checkpoints \
   --save-every 70000
 
-python train_gnn_ppo.py --resume-path ./checkpoints/gnn_ppo_1400000.pt
+# Resume from checkpoint
+python train_gnn_ppo.py \
+  --resume-path ./checkpoints/gnn_ppo_1400000.pt
 
+# Resume without restoring optimizer state (fresh LR)
+python train_gnn_ppo.py \
+  --resume-path ./checkpoints/gnn_ppo_1400000.pt \
+  --resume-optimizer 0
+
+# With W&B logging
 python train_gnn_ppo.py --track 1 --run-name my_run
 ```
 
@@ -479,21 +510,23 @@ python test_mlp_transfer_failure.py
 ### ROS2 Launch (Gazebo)
 
 ```bash
+cd morpho_gnn_robot/morpho_ros2_ws
 source /opt/ros/jazzy/setup.bash
-source morpho_gnn_robot/morpho_ros2_ws/install/setup.bash
+colcon build --packages-select morpho_robot --symlink-install
+source install/setup.bash
 
-ros2 launch morpho_robot morpho_robot.launch.py
+# Launch with MLP policy (stable — recommended)
+ros2 launch morpho_robot morpho_robot.launch.py \
+  policy_type:=mlp \
+  mlp_checkpoint:=/path/to/mlp_ppo_10223616.pt
 
-ros2 run morpho_robot gnn_policy_node \
-  --checkpoint /path/to/gnn_ppo_final.pt \
-  --urdf /path/to/anymal.urdf
-
-ros2 run morpho_robot llm_planner_node \
-  --ros-args \
-  -p task:="navigate to the red box" \
-  -p llm_model:="llama3.1:8b" \
-  -p replan_interval_s:=5.0
+# Launch with GNN policy
+ros2 launch morpho_robot morpho_robot.launch.py \
+  policy_type:=gnn \
+  gnn_checkpoint:=/path/to/gnn_ppo_final.pt
 ```
+
+The launch file starts: `robot_state_publisher`, `gz sim` (warehouse world), `parameter_bridge`, `vision_node` (YOLOv8 + depth), `MLP_policy_node` or `gnn_policy_node`, `llm_planner_node`, and `skill_translator_node`.
 
 ---
 
@@ -501,20 +534,24 @@ ros2 run morpho_robot llm_planner_node \
 
 | Parameter | Value | Notes |
 |---|---|---|
-| Total timesteps | 7,000,000+ | Best checkpoint selected from run |
+| Total timesteps | 12,000,000 | Matched to MLP baseline |
 | `num_steps` | 4,096 | Steps per rollout |
 | `num_minibatches` | 4 | → minibatch size 1024 |
 | `update_epochs` | 6 | Epochs per PPO update |
-| `gamma` | 0.998 | High discount for locomotion |
+| `gamma` | 0.99 | Discount factor |
 | `gae_lambda` | 0.95 | GAE bias-variance trade-off |
-| `clip_coef` | 0.1 | PPO clipping |
-| `ent_coef` | 0.0005 | Annealed by 90% over training |
+| `clip_coef` | 0.15 | PPO clipping (matched to MLP) |
+| `clip_vloss` | True | Clipped value loss (matched to MLP) |
+| `ent_coef` | 0.005 | Fixed entropy coefficient |
 | `vf_coef` | 0.5 | Value loss coefficient |
 | `max_grad_norm` | 0.5 | Gradient clipping |
-| `target_kl` | 0.025 | KL early-stop threshold |
-| `learning_rate` | 2e-4 | GNN, actor, and critic groups |
+| `target_kl` | 0.015 | KL early-stop threshold |
+| `gnn_learning_rate` | 6.8e-4 | GNN trunk (matched to MLP) |
+| `actor_learning_rate` | 4.5e-4 | Actor head |
+| `critic_learning_rate` | 4.5e-4 | Critic head |
+| LR schedule | Linear decay | Frac from 1.0 → 0.0 over training |
 | `hidden_dim` | 48 | GNN hidden width |
-| `max_episode_steps` | 800 | ~2 seconds at 400 Hz |
+| `max_episode_steps` | 1,000 | ~2.5 seconds at 400 Hz |
 | `save_every` | 70,000 | Checkpoint interval |
 
 ---
@@ -596,13 +633,18 @@ Checkpoints (`.pt`, `.pth`), W&B logs, build artifacts, and large binary weights
 
 | Component | Status |
 |---|---|
-| MLP baseline training | ✅ Complete |
+| MLP baseline training (12M steps) | ✅ Complete — `mlp_ppo_10223616.pt` |
 | MLP transfer failure demo | ✅ Complete |
-| GNN policy training (quadruped) | ✅ Stable locomotion achieved |
+| GNN policy training (quadruped) | 🔄 Retraining — aligned to MLP hyperparameters |
 | Zero-shot hexapod transfer | ✅ Demonstrated in PyBullet |
 | Hexapod URDF generator | ✅ Complete |
 | LLM planning layer (standalone) | ✅ Complete |
-| ROS2 / Gazebo deployment nodes | ✅ Complete |
+| ROS2 / Gazebo: MLP policy deployment | ✅ Stable locomotion + obstacle avoidance |
+| ROS2 / Gazebo: GNN policy deployment | 🔄 Pending GNN retraining completion |
+| Vision node (YOLOv8 + depth, ground filter) | ✅ Complete |
+| Reactive obstacle avoidance (0.5 s loop) | ✅ Complete — side-wall guard included |
+| Roll telemetry fix (`arctan2(y, -z)`) | ✅ Fixed |
+| Spawn conflict fix (world SDF) | ✅ Fixed |
 | Publication plots | ✅ Generated |
 | Paper draft | 🔄 In progress |
 | Target venue | ICRA / CoRL workshop |

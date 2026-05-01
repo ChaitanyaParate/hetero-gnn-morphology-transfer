@@ -140,10 +140,27 @@ class SkillTranslatorNode(Node):
     def _fallback_goal(self, skill: str, target: str) -> Optional[Tuple[float, float]]:
         s = skill.strip().lower()
         t = target.strip().lower()
+        # Forward/navigate fallbacks
         if s.startswith('navigate') and t in ('goal', 'forward', ''):
             self.get_logger().warn(f'Using fallback forward goal: x={self.default_forward_goal_m:.2f}, y=0.00', throttle_duration_sec=3.0)
             return (self.default_forward_goal_m, 0.0)
-        return None
+        # Explicit skill mappings -> (x_forward, y_lateral) in base_link
+        # GNN policy's _cb_goal_pose converts these to: vx=min(1,x), wy=atan2(y,x)
+        if s in ('trot', 'walk', 'move_forward', 'forward', 'go_forward'):
+            return (self.default_forward_goal_m, 0.0)
+        if s in ('turn_left', 'rotate_left', 'rotate_ccw'):
+            # Gentle arc-left: wy = atan2(0.4, 0.6) ≈ 34° — curves left without spinning
+            return (0.6, 0.4)
+        if s in ('turn_right', 'rotate_right', 'rotate_cw'):
+            return (0.6, -0.4)
+        if s in ('stop', 'stand', 'halt', 'standstill'):
+            # Send a very small forward goal so robot holds stance, not zero (zero causes drift)
+            return (0.05, 0.0)
+        if s in ('backward', 'move_backward', 'reverse'):
+            return (-0.3, 0.0)
+        # Generic fallback: go forward
+        self.get_logger().warn(f'Unknown skill "{skill}": defaulting to forward goal.', throttle_duration_sec=5.0)
+        return (self.default_forward_goal_m, 0.0)
 
     def _publish_goal_pose(self, x: float, y: float) -> None:
         yaw = math.atan2(y, x) if abs(x) + abs(y) > 1e-06 else 0.0

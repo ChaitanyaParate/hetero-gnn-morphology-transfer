@@ -308,11 +308,13 @@ class MLPPolicyNode(Node):
         now = self.get_clock().now()
         if (now - self._last_telemetry_time).nanoseconds > 1000000000.0:
             pitch_est = -gravity_body[0]
-            roll_est = gravity_body[1]
+            # arctan2(y, -z): upright → z≈-1 → arctan2(0,1)=0°; rolled 90° right → arctan2(-1,0)=-90°
+            roll_deg = float(np.degrees(np.arctan2(gravity_body[1], -gravity_body[2])))
             left_avg = np.mean(np.abs(self._prev_action[:6]))
             right_avg = np.mean(np.abs(self._prev_action[6:12]))
-            self.get_logger().info(f'🤖 LLM COMMAND: >>> {self._current_skill.upper()} <<<')
-            self.get_logger().info(f'Telemetry | P/R: {pitch_est:.2f}/{roll_est:.2f} | L/R-Act: {left_avg:.3f}/{right_avg:.3f} | Steer: {self._steer_bias:.2f}')
+            roll_flag = ' ⚠️ ROLL!' if abs(roll_deg) > 25 else ''
+            self.get_logger().info(f'🤖 LLM COMMAND: >>> {self._current_skill.upper()} <<< | Steer: {self._steer_bias:+.2f}')
+            self.get_logger().info(f'Telemetry | Pitch: {pitch_est:.2f} | Roll: {roll_deg:.1f}°{roll_flag} | L/R-Act: {left_avg:.3f}/{right_avg:.3f}')
             self._last_telemetry_time = now
         from scipy.spatial.transform import Rotation as R
         r = R.from_quat(base_quat)
@@ -320,18 +322,21 @@ class MLPPolicyNode(Node):
         neutral_r = R.from_euler('xyz', [euler[0], euler[1], 0.0])
         neutral_quat = neutral_r.as_quat().astype(np.float32)
         
-        # Determine movement command based on LLM skill
-        vx, wy = 0.0, 0.0
-        if 'trot' in self._current_skill or 'walk' in self._current_skill:
-            vx, wy = 1.0, 0.0
+        # Policy was trained with [vx=1.0, wy=0.0] only.
+        # Sending OOD commands like [0, ±1] causes garbage actions and roll instability.
+        # Turning is done via differential leg scaling (steer_bias): left legs faster → turns right.
+        if 'stand' in self._current_skill:
+            command = np.array([0.0, 0.0], dtype=np.float32)
+            self._steer_bias = 0.0
         elif 'turn_left' in self._current_skill:
-            vx, wy = 0.0, 1.0
+            command = np.array([1.0, 0.0], dtype=np.float32)
+            self._steer_bias = -0.08  # right legs slightly faster → gradual left arc
         elif 'turn_right' in self._current_skill:
-            vx, wy = 0.0, -1.0
-        elif 'stand' in self._current_skill:
-            vx, wy = 0.0, 0.0
-            
-        command = np.array([vx, wy], dtype=np.float32)
+            command = np.array([1.0, 0.0], dtype=np.float32)
+            self._steer_bias = +0.08  # left legs slightly faster → gradual right arc
+        else:  # trot / walk
+            command = np.array([1.0, 0.0], dtype=np.float32)
+            self._steer_bias = 0.0
         obs = np.concatenate([pos, vel, base_lin_vel, base_ang_vel, neutral_quat, gravity_body, command]).astype(np.float32)
         obs_n = self._normalize_policy_obs(obs)
         obs_t = torch.tensor(obs_n, dtype=torch.float32, device=self.device).unsqueeze(0)

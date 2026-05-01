@@ -57,7 +57,7 @@ class VisionNode(Node):
             if cv_image.shape[-1] == 3:
                 cv_image = cv2.cvtColor(cv_image, cv2.COLOR_RGB2BGR)
             cv_image = cv2.convertScaleAbs(cv_image, alpha=1.5, beta=20)
-            print(cv_image.min(), cv_image.max())
+
         except Exception as e:
             self.get_logger().error(f'cv_bridge failed: {e}')
             return
@@ -77,20 +77,44 @@ class VisionNode(Node):
         annotated = results.plot()
         if depth_snapshot is not None:
             h, w = depth_snapshot.shape
+            # Only use upper 40% of image — floor always appears in lower rows.
+            # Walls/obstacles appear in upper rows even when robot pitches forward.
+            row_top    = int(h * 0.05)   # 5% from top
+            row_bottom = int(h * 0.40)   # 40% from top — floor excluded
+            col_third  = w // 3
+
+            # Front: center pixel, but filtered — floor pixel < MIN_OBSTACLE_DIST is ignored.
+            # Without this filter, floor at ~1.0m makes front < TURN_DIST and triggers constant turns.
+            MIN_OBSTACLE_DIST = 2.0   # raised from 1.5m — floor appears at 1.5-2m from camera angle
             center_u = w // 2
-            center_v = h // 2
-            center_depth = float(depth_snapshot[center_v, center_u])
-            roi = depth_snapshot[h // 3:2 * h // 3, w // 3:2 * w // 3]
-            valid_roi = roi[np.isfinite(roi) & (roi > 0)]
-            min_dist = float(np.min(valid_roi)) if valid_roi.size > 0 else float('nan')
-            h_start, h_end = (h // 3, 2 * h // 3)
-            left = depth_snapshot[h_start:h_end, :w // 3]
-            right = depth_snapshot[h_start:h_end, 2 * w // 3:]
-            left_valid = left[np.isfinite(left) & (left > 0)]
-            right_valid = right[np.isfinite(right) & (right > 0)]
-            left_dist = float(np.median(left_valid)) if left_valid.size > 0 else float('nan')
+            center_v = (row_top + row_bottom) // 2
+            raw_front = float(depth_snapshot[center_v, center_u])
+            # If center pixel is floor/leg/invalid, scan a small horizontal band for real obstacle
+            if not np.isfinite(raw_front) or raw_front < MIN_OBSTACLE_DIST:
+                center_band = depth_snapshot[center_v-5:center_v+5, center_u-20:center_u+20]
+                valid_front = center_band[np.isfinite(center_band) & (center_band >= MIN_OBSTACLE_DIST)]
+                center_depth = float(np.min(valid_front)) if valid_front.size > 0 else float('inf')
+            else:
+                center_depth = raw_front
+
+            # Closest obstacle: use 5th percentile (not min) to reject lone floor/leg pixels.
+            roi = depth_snapshot[row_top:row_bottom, col_third:2 * col_third]
+            valid_roi = roi[np.isfinite(roi) & (roi > MIN_OBSTACLE_DIST)]
+            if valid_roi.size > 0:
+                min_dist = float(np.percentile(valid_roi, 5))  # 5th pct robust vs min
+            else:
+                min_dist = float('inf')
+
+            # Left / right: same upper row band
+            left  = depth_snapshot[row_top:row_bottom, :col_third]
+            right = depth_snapshot[row_top:row_bottom, 2 * col_third:]
+            left_valid  = left[np.isfinite(left)   & (left  > 0)]
+            right_valid = right[np.isfinite(right)  & (right > 0)]
+            left_dist  = float(np.median(left_valid))  if left_valid.size  > 0 else float('nan')
             right_dist = float(np.median(right_valid)) if right_valid.size > 0 else float('nan')
-            self.get_logger().info(f'Front: {center_depth:.2f} m | Closest: {min_dist:.2f} m | Left: {left_dist:.2f} m | Right: {right_dist:.2f} m', throttle_duration_sec=1.0)
+            self.get_logger().info(
+                f'Front: {center_depth:.2f} m | Closest: {min_dist:.2f} m | Left: {left_dist:.2f} m | Right: {right_dist:.2f} m',
+                throttle_duration_sec=1.0)
             if self._has_display:
                 cv2.circle(annotated, (center_u, center_v), 5, (0, 0, 255), -1)
                 cv2.putText(annotated, f'Front {center_depth:.2f}m', (center_u + 10, center_v - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 2)
