@@ -266,11 +266,11 @@ if __name__ == '__main__':
         obs, reward, terminated, truncated, info = env.step(action)
         total_reward += reward
         if terminated or truncated:
-            print(f'  Episode ended at step {step} | fell={info['fell']}')
+            print(f'  Episode ended at step {step} | fell={info["fell"]}')
             obs, _ = env.reset()
             break
     print(f'  100-step reward sum : {total_reward:.3f}')
-    print(f'  Final base height   : {info['base_height']:.3f} m')
+    print(f'  Final base height   : {info["base_height"]:.3f} m')
     import sys
     sys.path.insert(0, '.')
     try:

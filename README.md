@@ -163,12 +163,10 @@ A `gymnasium.Env` wrapping PyBullet physics:
 
 **Fall penalty:** 250.0 (synced with MLP baseline — strong signal to avoid falls rather than tolerate them)
 
-**Command-conditioned training:** At each episode reset, a random command mode is sampled:
-- Stand still: `[vx=0, wy=0]`
-- Move forward: `[vx ~ U(0.5, 1.0), wy=0]`
-- Rotate: `[vx=0, wy ~ ±U(0.5, 1.0)]`
+**Command-conditioned training:** Training is locked to **forward-walking only** to break the crouching local optimum:
+- Move forward: `[vx ~ U(0.5, 1.0), wy=0]` — always, every episode
 
-The command vector is broadcast to all joint nodes and the body node in the graph.
+The command vector is broadcast to all joint nodes and the body node in the graph. This means `wy` is **always 0.0** during training — an important constraint to respect at deployment time.
 
 **Domain randomization:** Gaussian observation noise (σ=0.01 pos, σ=0.02 vel), random initial orientation perturbation (±0.05 rad).
 
@@ -259,7 +257,9 @@ A ROS2 node (`llm_planner_node`) with a **two-tier planning architecture**:
 
 YOLOv8 + depth camera perception node:
 - Publishes scene graph JSON to `/scene_graph` with detected objects and obstacle distances
-- **Ground-filtered depth ROI:** Only reads image rows 10%–55% from top to exclude ground/floor pixels when the robot pitches forward. Prevents false obstacle triggers from floor detections.
+- **Ground-filtered depth ROI:** Only reads the top 5%–40% of image rows — floor pixels only appear in lower rows. Using the lower 55% caused the floor to be detected as the closest obstacle, triggering constant turn commands.
+- **Front distance filtering:** The centre pixel is checked against `MIN_OBSTACLE_DIST=2.0m` before use. If the centre ray hits the floor or a leg, a small horizontal band is scanned for a real obstacle reading.
+- **Robust closest-obstacle:** 5th-percentile of the middle-column ROI (not raw minimum) rejects isolated floor/leg pixels.
 
 **File:** `morpho_gnn_robot/morpho_ros2_ws/src/morpho_robot/morpho_robot/skill_translator_node.py`
 
@@ -280,12 +280,13 @@ Two policy nodes are available, selected via the `policy_type` launch argument:
 - Telemetry: pitch, roll (corrected formula: `arctan2(y, -z)`), and L/R action magnitude
 - Roll warning threshold: 15°
 
-**`gnn_policy_node.py`** *(in development — GNN retraining in progress)*
+**`gnn_policy_node.py`** *(active — stable forward locomotion confirmed in Gazebo)*
 - Runs `SlimHeteroGNNActorCritic` at **200 Hz**
 - Subscribes to `/joint_states` and `/odom`
 - Converts world-frame velocities to body-frame using quaternion rotation
 - 400-tick linear ramp-up on startup to avoid joint impulses
-- Yaw-rate PD correction on HAA joints for heading stability
+- **In-distribution command clamping:** `vx` clamped to `[0.5, 1.0]` (training range); `wy` clamped to `±0.3` (GNN was trained with `wy=0` only, so large values are OOD)
+- **Yaw-rate PI controller:** Post-action HAA (hip abductor) joint correction — `KP=0.35`, `KI=0.02`, `LPF=0.90`. Offsets left/right HAA joints to counteract circular drift without modifying the GNN's input command distribution
 
 **Common infrastructure:**
 - `parameter_bridge` (gz-ros2): bridges Gazebo topics ↔ ROS2
@@ -583,15 +584,15 @@ First 30 dims are running-normalized during training. The last 9 dims are raw.
 ```
 r = r_alive + r_vel + r_stability + r_torque + r_contact
 
-r_alive     =  1.0  (or -100.0 on fall)
-r_vel       =  1.5 * exp(-2 * (vx - cmd_vx)²)
+r_alive     =  0.1  (constant survival bonus)
+r_vel       =  4.0 * exp(-2 * (vx - cmd_vx)²)   ← boosted from 1.5 to break crouching
              + 1.5 * exp(-2 * (wy - cmd_wy)²)
+             - 0.5  (if cmd_vx > 0.1 and actual vx < 0.15 — standing-still penalty)
 r_stability = -1.0 * (roll² + pitch²)
              - 0.5 * |lateral_vel|
 r_torque    = -5e-6 * sum(torques²)
 r_contact   = -0.5 if non-foot link touches ground (+ terminates)
-
-clipped to [-5.0, 5.0]
+fall        = -250.0 + episode terminates (base_height < 0.25 m or |roll/pitch| > 0.8 rad)
 ```
 
 ---
@@ -629,22 +630,36 @@ Checkpoints (`.pt`, `.pth`), W&B logs, build artifacts, and large binary weights
 
 ---
 
+## Deployment Engineering Notes
+
+Several training/deployment mismatches were discovered and resolved during Gazebo integration:
+
+| Issue | Root Cause | Fix |
+|---|---|---|
+| Robot drifts in circles | GNN trained with `wy=0` only → inherent gait asymmetry (back legs produce ~1.5× more action than front legs) | Yaw-rate PI controller via post-action HAA joint offset |
+| Front legs barely visible | Training used PD gains `Kp=150, Kd=5`; Gazebo uses `Kp=1500, Kd=150` (10× stiffer) | Raised `MAX_CMD_STEP` from 0.2→0.5 and `ACTION_SMOOTH_ALPHA` from 0.8→0.6 |
+| OOD `wy` injection | Previous fix injected `wy≠0` into GNN command; GNN was never trained with `wy≠0` | Clamp `wy` to `±0.3` at GNN input; yaw correction applied only to HAA joints post-action |
+| Floor detected as obstacle | Depth ROI included lower 55% of image where floor appears; `front` pixel unfiltered | Tighten ROI to top 40%; filter front pixel by `MIN_OBSTACLE_DIST=2.0m` |
+| LLM never called | `path_clear` check required `closest > 3.0m` but floor always at ~2m → LLM throttled | LLM still called for navigation; reactive fallback handles obstacle-clearing |
+
+---
+
 ## Research Status
 
 | Component | Status |
 |---|---|
 | MLP baseline training (12M steps) | ✅ Complete — `mlp_ppo_10223616.pt` |
 | MLP transfer failure demo | ✅ Complete |
-| GNN policy training (quadruped) | 🔄 Retraining — aligned to MLP hyperparameters |
+| GNN policy training (12M steps, forward-walk) | ✅ Complete — `gnn_ppo_final.pt` |
 | Zero-shot hexapod transfer | ✅ Demonstrated in PyBullet |
 | Hexapod URDF generator | ✅ Complete |
 | LLM planning layer (standalone) | ✅ Complete |
 | ROS2 / Gazebo: MLP policy deployment | ✅ Stable locomotion + obstacle avoidance |
-| ROS2 / Gazebo: GNN policy deployment | 🔄 Pending GNN retraining completion |
-| Vision node (YOLOv8 + depth, ground filter) | ✅ Complete |
+| ROS2 / Gazebo: GNN policy deployment | ✅ Active — forward trot + LLM-guided navigation |
+| Yaw-rate PI correction (HAA joint offset) | ✅ Implemented — eliminates circular drift |
+| Vision node ground filtering (ROI + MIN_DIST) | ✅ Improved — top-40% ROI, 5th-pct closest |
 | Reactive obstacle avoidance (0.5 s loop) | ✅ Complete — side-wall guard included |
-| Roll telemetry fix (`arctan2(y, -z)`) | ✅ Fixed |
-| Spawn conflict fix (world SDF) | ✅ Fixed |
+| Training/deployment mismatch documented | ✅ See Deployment Engineering Notes above |
 | Publication plots | ✅ Generated |
 | Paper draft | 🔄 In progress |
 | Target venue | ICRA / CoRL workshop |

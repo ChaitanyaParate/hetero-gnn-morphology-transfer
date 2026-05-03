@@ -1,0 +1,39 @@
+[
+  {
+    "label": "GNN \u2013 Quadruped (trained)",
+    "mean": 2359.3783707423113,
+    "std": 557.9776788828201,
+    "min": 1642.3323937306288,
+    "max": 3207.0119567885054,
+    "success_rate": 1.0,
+    "n": 20
+  },
+  {
+    "label": "GNN \u2013 Hexapod (zero-shot)",
+    "mean": 836.6357251344709,
+    "std": 458.84775293721293,
+    "min": 13.816264229158946,
+    "max": 1794.595742795763,
+    "success_rate": 1.0,
+    "n": 20
+  },
+  {
+    "label": "MLP \u2013 Quadruped (trained)",
+    "mean": 3753.5779295674815,
+    "std": 1377.4704778674463,
+    "min": 427.4214587978684,
+    "max": 4972.016406169159,
+    "success_rate": 0.75,
+    "n": 20
+  },
+  {
+    "label": "MLP \u2013 Hexapod (transfer)",
+    "mean": 0.0,
+    "std": 0.0,
+    "min": 0.0,
+    "max": 0.0,
+    "success_rate": 0.0,
+    "n": 20,
+    "note": "Error(s) in loading state_dict for MLP:\n\tsize mismatch for log_std: copying a param with shape torch.Size([12]) from checkpoint, the shape in current model is torch.Size([18]).\n\tsize mismatch for trunk.0.weight: copying a param with shape torch.Size([256, 39]) from checkpoint, the shape in current model is torch.Size([256, 49]).\n\tsize mismatch for actor_head.2.weight: copying a param with shape to"
+  }
+]
