@@ -59,5 +59,6 @@ Thumbs.db
 *api_key*
 research_papers
 # Kaggle and Fine-tuning
-kaggle_package/
+/kaggle_package/          # ignore root-level flat copy only
+!kaggle_gnn_finetune/     # track the notebook bundle
 finetune_checkpoints/
