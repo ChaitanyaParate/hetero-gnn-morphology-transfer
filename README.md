@@ -4,7 +4,7 @@
 
 A research project combining Graph Neural Networks (GNN), Proximal Policy Optimization (PPO), and Large Language Model (LLM) planning to create robot locomotion policies that generalize across different robot morphologies at inference time.
 
-Submitted to **IEEE ROBIO 2025**.
+Submitted to **IEEE ROBIO 2026**.
 
 ---
 
@@ -724,8 +724,8 @@ Several training/deployment mismatches were discovered and resolved during Gazeb
 | Yaw-rate PI correction (HAA joint offset) | ✅ Eliminates circular drift |
 | PyBullet stderr suppressor | ✅ fd-level redirect — clean training logs |
 | Publication plots | ✅ Generated |
-| **Research paper** | ✅ **Submitted — IEEE ROBIO 2025** |
-| Target venue | **IEEE ROBIO 2025** |
+| **Research paper** | ✅ **Submitted — IEEE ROBIO 2026** |
+| Target venue | **IEEE ROBIO 2026** |
 
 ---
 
@@ -738,4 +738,4 @@ See [LICENSE](./LICENSE).
 *Research project by Chaitanya Parate — MIT World Peace University, Pune.*
 *Conducted as part of an independent research initiative in robot learning and morphological generalization.*
 
-*Paper submitted to IEEE ROBIO 2025.*
+*Paper submitted to IEEE ROBIO 2026.*
