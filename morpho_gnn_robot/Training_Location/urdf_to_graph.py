@@ -18,11 +18,38 @@ NODE_ROLE_HFE = 2
 NODE_ROLE_KFE = 3
 NODE_ROLE_GENERIC = 4
 NUM_NODE_ROLES = 5
-JOINT_ROLE_MAP: Dict[str, int] = {'HAA': NODE_ROLE_HAA, 'HFE': NODE_ROLE_HFE, 'KFE': NODE_ROLE_KFE}
+# Multi-vendor keyword-to-role mapping.
+# Priority: first match wins (ordered from most specific to most generic).
+# Supports: ANYmal (HAA/HFE/KFE), Unitree (hip/thigh/calf), and generic aliases.
+KEYWORD_ROLE_MAP: Dict[str, int] = {
+    # ANYmal-style (exact suffix match, e.g. LF_HAA, RF_KFE)
+    'HAA': NODE_ROLE_HAA,
+    'HFE': NODE_ROLE_HFE,
+    'KFE': NODE_ROLE_KFE,
+    # Unitree-style (e.g. FR_hip_joint, FR_thigh_joint, FR_calf_joint)
+    'HIP': NODE_ROLE_HAA,
+    'THIGH': NODE_ROLE_HFE,
+    'CALF': NODE_ROLE_KFE,
+    # Generic aliases for other vendors
+    'ABDUCT': NODE_ROLE_HAA,
+    'FLEX': NODE_ROLE_HFE,
+    'KNEE': NODE_ROLE_KFE,
+    'SHOULDER': NODE_ROLE_HAA,
+    'ELBOW': NODE_ROLE_KFE,
+}
 
 def _joint_role(joint_name: str) -> int:
-    suffix = joint_name.split('_')[-1].upper()
-    return JOINT_ROLE_MAP.get(suffix, NODE_ROLE_GENERIC)
+    """Map a joint name to a node role using multi-vendor keyword search.
+
+    Checks the full joint name (upper-cased) for each keyword in
+    KEYWORD_ROLE_MAP. The first matching keyword wins. Falls back to
+    NODE_ROLE_GENERIC for unrecognised joints.
+    """
+    name_upper = joint_name.upper()
+    for keyword, role in KEYWORD_ROLE_MAP.items():
+        if keyword in name_upper:
+            return role
+    return NODE_ROLE_GENERIC
 
 def _xyz(tag) -> List[float]:
     if tag is not None and 'xyz' in tag.attrib:

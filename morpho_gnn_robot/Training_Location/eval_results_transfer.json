@@ -1,0 +1,23 @@
+{
+  "hexapod": {
+    "name": "ANYmal Hexapod",
+    "mean": 98.03,
+    "std": 27.76,
+    "length": 47.5,
+    "success": 0.0
+  },
+  "aliengo": {
+    "name": "Unitree Aliengo",
+    "mean": 109.61,
+    "std": 27.7,
+    "length": 82.8,
+    "success": 0.0
+  },
+  "go1": {
+    "name": "Unitree Go1",
+    "mean": 119.61,
+    "std": 36.56,
+    "length": 73.2,
+    "success": 0.0
+  }
+}

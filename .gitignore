@@ -58,3 +58,6 @@ Thumbs.db
 *.env
 *api_key*
 research_papers
+# Kaggle and Fine-tuning
+kaggle_package/
+finetune_checkpoints/

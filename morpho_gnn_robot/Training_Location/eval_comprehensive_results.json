@@ -1,0 +1,44 @@
+{
+  "terrain": {
+    "flat": {
+      "mean": 2429.26,
+      "std": 667.11,
+      "mean_steps": 1000,
+      "success_rate": 100.0,
+      "n_episodes": 20,
+      "mean_fall_step": null
+    },
+    "slope_5deg": {
+      "mean": 2440.07,
+      "std": 780.73,
+      "mean_steps": 953,
+      "success_rate": 95.0,
+      "n_episodes": 20,
+      "mean_fall_step": 60
+    },
+    "slope_10deg": {
+      "mean": 186.81,
+      "std": 32.76,
+      "mean_steps": 54.9,
+      "success_rate": 0.0,
+      "n_episodes": 20,
+      "mean_fall_step": 54.9
+    },
+    "uneven_2cm": {
+      "mean": 135.13,
+      "std": 0.0,
+      "mean_steps": 51,
+      "success_rate": 0.0,
+      "n_episodes": 20,
+      "mean_fall_step": 51
+    },
+    "uneven_4cm": {
+      "mean": 85.84,
+      "std": 0.0,
+      "mean_steps": 33,
+      "success_rate": 0.0,
+      "n_episodes": 20,
+      "mean_fall_step": 33
+    }
+  }
+}

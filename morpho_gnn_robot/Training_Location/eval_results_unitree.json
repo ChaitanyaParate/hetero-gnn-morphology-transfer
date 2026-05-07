@@ -1,0 +1,16 @@
+{
+  "aliengo": {
+    "name": "Unitree Aliengo",
+    "mean": -5.0,
+    "std": 0.0,
+    "length": 1,
+    "success": 0.0
+  },
+  "go1": {
+    "name": "Unitree Go1",
+    "mean": -5.0,
+    "std": 0.0,
+    "length": 1,
+    "success": 0.0
+  }
+}
