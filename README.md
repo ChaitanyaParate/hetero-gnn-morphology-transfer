@@ -1,4 +1,4 @@
-# Morphology-Generalizable Robotic Control via GNN + LLM Planning
+# Constrained Zero-Shot Morphological Transfer for Legged Locomotion via Heterogeneous Graph Neural Networks with LLM-Guided Planning
 
 > **Zero-shot transfer of a locomotion policy from a 12-DOF quadruped to an 18-DOF hexapod — no retraining required. 500K-step fine-tuning yields a 3.8× reward gain.**
 
