@@ -1,10 +1,10 @@
 # Morphology-Generalizable Robotic Control via GNN + LLM Planning
 
-> **Zero-shot transfer of a locomotion policy from a 12-DOF quadruped to an 18-DOF hexapod — no retraining, no fine-tuning.**
+> **Zero-shot transfer of a locomotion policy from a 12-DOF quadruped to an 18-DOF hexapod — no retraining required. 500K-step fine-tuning yields a 3.8× reward gain.**
 
 A research project combining Graph Neural Networks (GNN), Proximal Policy Optimization (PPO), and Large Language Model (LLM) planning to create robot locomotion policies that generalize across different robot morphologies at inference time.
 
-Targeting **ICRA / CoRL** workshop tracks.
+Submitted to **IEEE ROBIO 2025**.
 
 ---
 
@@ -41,12 +41,21 @@ Targeting **ICRA / CoRL** workshop tracks.
 
 ## Key Result
 
-| Transfer | Method | Result |
-|---|---|---|
-| Quadruped (12 DOF) → Hexapod (18 DOF) | **GNN (ours)** | ✅ Zero-shot — same weights, locomotion achieved |
-| Quadruped (12 DOF) → Hexapod (18 DOF) | MLP baseline | ❌ Hard failure — shape mismatch, cannot even load |
+| Experiment | Method | Reward | Survival |
+|---|---|---|---|
+| Quadruped in-distribution | GNN (31,582 params) | 2,409 ± 575 | 1,000 steps (100%) |
+| Quadruped in-distribution | MLP (210,457 params) | 4,237 ± 343 | 1,000 steps (100%) |
+| Hexapod zero-shot (18 DOF) | **GNN — same weights** | 106 ± 25 | ~47 steps |
+| Hexapod zero-shot (18 DOF) | MLP | ❌ RuntimeError | 0 steps |
+| Hexapod fine-tuned (500K steps) | GNN | **416 ± 114** | **193 steps (+3.8×)** |
+| Aliengo/Go1 zero-shot (12 DOF) | GNN | 112–526 | 60–184 steps |
+| Aliengo/Go1 zero-shot (12 DOF) | MLP | ❌ RuntimeError | 0 steps |
+| Terrain 5° slope (zero-shot) | GNN | 2,440 ± 780 | **95% success** |
+| Terrain 10° slope (zero-shot) | GNN | 187 ± 33 | 0% success |
 
-The GNN policy's relational inductive bias means the same 29,572 parameters work on any robot whose morphology can be expressed as a graph — quadruped, hexapod, or beyond — without any retraining.
+> **Both GNN and MLP use identical per-step reward clipped to [−5, 5].** MLP's higher reward reflects 6.7× more parameters (85% vs 50% of theoretical maximum) — not a different reward function. The GNN trades peak in-distribution reward for zero-shot generalization.
+
+The MLP cannot load on *any* morphology other than the training one (fixed input dimension). The GNN runs on every morphology in the HAA/HFE/KFE vocabulary without code change.
 
 ---
 
@@ -115,22 +124,24 @@ Because the graph topology is read directly from the URDF at runtime, the same c
 
 **File:** `morpho_gnn_robot/Training_Location/gnn_actor_critic.py`
 
-**Total parameters: 29,572** (well under a 50K budget).
+**Total parameters: 31,582** (85% fewer than the MLP baseline's 210,457).
 
 ```
 Architecture
 ────────────────────────────────────────────
 type_proj   (5 role-specific Linear layers)   5 × (28→48)   = 7,200 params
-conv1       GATv2Conv(48→48, heads=2)                        = 18,944 params
+conv1       GATv2Conv(48→48, heads=2, edge_dim=4)            = 19,680 params
 norm1       LayerNorm(96)                                     =    192 params
-conv2       GATv2Conv(96→48, heads=1)                        =  3,024 params  (approx)
+conv2       GATv2Conv(96→48, heads=1, edge_dim=4)            =  1,296 params
 norm2       LayerNorm(48)                                     =     96 params
 actor_head  Linear(48→32) → Tanh → Linear(32→1)             =  1,569 params
 log_std     learnable (one per joint, initialized at -1.6)   =     12 params  (quadruped)
-critic_head Linear(48→32) → Tanh → Linear(32→1)             =  1,569 params
+critic_head Linear(96→32) → ELU  → Linear(32→1)             =  1,569 params  (dual-stream)
 ────────────────────────────────────────────
-TOTAL                                                         ≈ 29,572
+TOTAL                                                         ≈ 31,582
 ```
+
+> **Node features are 28-dim:** 11 static URDF features + 17 runtime features (joint pos, vel, body lin/ang vel, quat, gravity, command). Body angular velocity was added to the static embedding in the final architecture revision.
 
 **Actor:** Per-joint embeddings from the final GATv2 layer are fed individually through `actor_head` (shared weights) → one scalar action per joint. This is what enables transfer — the head sees a 48-dim embedding, not a flat fixed-size vector.
 
@@ -320,54 +331,58 @@ The GNN has no such constraint: joint embeddings are computed per-node through s
 .
 ├── morpho_gnn_robot/
 │   ├── Training_Location/           # Core RL training & transfer code
-│   │   ├── gnn_actor_critic.py      # SlimHeteroGNNActorCritic (29,572 params)
-│   │   ├── train_gnn_ppo.py         # PPO training loop (2M steps)
-│   │   ├── robot_env_bullet.py      # PyBullet Gym environment
+│   │   ├── gnn_actor_critic.py      # SlimHeteroGNNActorCritic (31,582 params)
+│   │   ├── train_gnn_ppo.py         # PPO training loop (12M steps)
+│   │   ├── robot_env_bullet.py      # PyBullet Gym environment (w/ stderr suppressor)
 │   │   ├── urdf_to_graph.py         # URDF → PyTorch Geometric graph
+│   │   ├── finetune_transfer.py     # Staged fine-tuning on target morphologies
+│   │   ├── eval_comprehensive.py    # Zero-shot vs fine-tuned benchmark
 │   │   ├── run_llm_policy.py        # LLM command → GNN policy (standalone)
 │   │   ├── test_morphology_transfer.py  # Zero-shot quad→hex transfer demo
 │   │   ├── generate_hexapod.py      # Procedural hexapod URDF generator
 │   │   ├── hexapod_anymal.urdf      # Generated 18-DOF hexapod URDF
 │   │   ├── anymal_stripped.urdf     # Cleaned 12-DOF quadruped URDF
-│   │   ├── stripped_urdf_maker.py   # URDF cleaning utility
-│   │   ├── check_checkpoint.py      # Value function variance inspector
-│   │   ├── smoke_test.py            # Quick environment sanity check
-│   │   ├── test_action.py           # Action space validation
-│   │   ├── test_critic.py           # Critic output tests
-│   │   ├── test_ev.py               # Explained variance diagnostic
-│   │   ├── test_stand.py            # Static standing test
-│   │   └── test_vf_variance.py      # Value function variance test
+│   │   ├── aliengo_stripped.urdf    # Unitree Aliengo (collision only)
+│   │   ├── go1_stripped.urdf        # Unitree Go1 (collision only)
+│   │   └── stripped_urdf_maker.py   # URDF cleaning utility
 │   │
 │   ├── Training_MLP/                # MLP baseline (demonstrates transfer failure)
-│   │   ├── mlp_actor_critic.py      # Standard MLP policy (~200K params)
+│   │   ├── mlp_actor_critic.py      # Standard MLP policy (210,457 params)
 │   │   ├── train_mlp_ppo.py         # MLP PPO training
 │   │   ├── robot_env_bullet.py      # Same environment
-│   │   ├── test_mlp_transfer_failure.py  # Proves MLP cannot transfer
-│   │   ├── anymal_stripped.urdf
-│   │   └── hexapod_anymal.urdf
+│   │   └── test_mlp_transfer_failure.py
 │   │
 │   ├── plots/                       # Publication-ready figures
-│   │   ├── zero_shot_transfer_barplot.png
-│   │   ├── zero_shot_transfer_barplot.pdf
-│   │   ├── zero_shot_transfer_boxplot.png
-│   │   └── zero_shot_transfer_boxplot.pdf
+│   │   ├── zero_shot_transfer_barplot.png/.pdf
+│   │   └── zero_shot_transfer_boxplot.png/.pdf
 │   │
 │   └── morpho_ros2_ws/              # ROS2 workspace (Gazebo deployment)
 │       └── src/morpho_robot/
 │           ├── morpho_robot/
-│           │   ├── gnn_policy_node.py       # 200Hz GNN control loop
-│           │   ├── llm_planner_node.py      # Ollama LLM → /llm_action
-│           │   ├── skill_translator_node.py # Plan → /goal_pose
-│           │   ├── MLP_policy_node.py       # MLP policy node (baseline)
-│           │   ├── vision_node.py           # Camera perception
-│           │   ├── read_joints.py           # Joint state reader
-│           │   ├── gnn_actor_critic.py      # GNN model (copy for ROS)
-│           │   └── urdf_to_graph.py         # Graph builder (copy for ROS)
+│           │   ├── gnn_policy_node.py
+│           │   ├── llm_planner_node.py
+│           │   ├── skill_translator_node.py
+│           │   ├── MLP_policy_node.py
+│           │   ├── vision_node.py
+│           │   ├── gnn_actor_critic.py
+│           │   └── urdf_to_graph.py
 │           ├── launch/morpho_robot.launch.py
 │           ├── config/bridge.yaml
 │           ├── urdf/anymal.urdf
-│           ├── worlds/warehouse_world.sdf
-│           └── meshes/                      # ANYmal visual meshes
+│           └── worlds/warehouse_world.sdf
+│
+├── GNN_Fine-tuning_output/          # Kaggle fine-tuning results (curves tracked)
+│   ├── Hexapod/curve_hexapod.json   # 500K-step reward curve (3.8× gain)
+│   ├── aliengo/curve_aliengo.json
+│   └── go1/curve_go1.json
+│
+├── kaggle_package/                  # Deployment bundle for Kaggle CPU training
+│   ├── finetune_transfer.py
+│   ├── robot_env_bullet.py
+│   ├── gnn_actor_critic.py
+│   ├── urdf_to_graph.py
+│   ├── *_stripped.urdf              # Stripped URDFs for all morphologies
+│   └── seed2_final.pt               # Base checkpoint (gitignored)
 │
 ├── .gitignore
 ├── LICENSE
@@ -444,6 +459,52 @@ python train_gnn_ppo.py --track 1 --run-name my_run
 ```
 
 Checkpoints are saved every 70,000 steps and as `gnn_ppo_final.pt` at the end.
+
+---
+
+### Fine-Tune on a Target Morphology
+
+Run staged fine-tuning (100K steps head-only → 400K steps full network):
+
+```bash
+cd morpho_gnn_robot/Training_Location
+
+# Fine-tune on hexapod (recommended — same HAA/HFE/KFE vocabulary)
+python finetune_transfer.py \
+  --morphology hexapod \
+  --base-checkpoint ./checkpoints/gnn_ppo_final.pt \
+  --total-steps 500000 \
+  --stage1-steps 100000 \
+  --save-dir ./finetune_out
+
+# Fine-tune on Unitree Aliengo (requires full-inertia URDF for best results)
+python finetune_transfer.py \
+  --morphology aliengo \
+  --base-checkpoint ./checkpoints/gnn_ppo_final.pt
+```
+
+**Expected hexapod results:** reward 110 → 416 (+3.8×), survival 47 → 193 steps at 500K steps.
+
+---
+
+### Evaluate Zero-Shot vs Fine-Tuned
+
+```bash
+cd morpho_gnn_robot/Training_Location
+
+# Benchmark all morphologies (zero-shot from base checkpoint)
+python eval_comprehensive.py \
+  --base-checkpoint ./checkpoints/gnn_ppo_final.pt \
+  --episodes 20
+
+# Include fine-tuned checkpoints for comparison
+python eval_comprehensive.py \
+  --base-checkpoint ./checkpoints/gnn_ppo_final.pt \
+  --finetuned-dir ./finetune_out \
+  --episodes 20
+```
+
+Results written to `eval_comprehensive_results.json`.
 
 ---
 
@@ -648,21 +709,23 @@ Several training/deployment mismatches were discovered and resolved during Gazeb
 
 | Component | Status |
 |---|---|
-| MLP baseline training (12M steps) | ✅ Complete — `mlp_ppo_10223616.pt` |
+| MLP baseline training (5 seeds × 12M steps) | ✅ Complete — `mlp_ppo_final.pt` |
 | MLP transfer failure demo | ✅ Complete |
-| GNN policy training (12M steps, forward-walk) | ✅ Complete — `gnn_ppo_final.pt` |
-| Zero-shot hexapod transfer | ✅ Demonstrated in PyBullet |
+| GNN policy training (5 seeds × 12M steps) | ✅ Complete — `gnn_ppo_final.pt` |
+| Multi-seed stability (4/5 seeds stable) | ✅ Documented — Seed 1 entropy collapse at 8.97M steps |
+| Zero-shot hexapod transfer (PyBullet) | ✅ 106 ± 25 reward, 47 steps survival |
+| Unitree Aliengo/Go1 architectural compatibility | ✅ GNN executes (MLP cannot load); perf bounded by URDF fidelity |
+| Terrain robustness evaluation | ✅ 95% success at 5° slope (zero-shot) |
+| Hexapod 500K fine-tuning (Kaggle CPU) | ✅ 3.8× reward gain (110 → 416), survival 47 → 193 steps |
 | Hexapod URDF generator | ✅ Complete |
-| LLM planning layer (standalone) | ✅ Complete |
+| LLM planning layer (standalone + ROS2) | ✅ Complete — Qwen 2.5 7B via Ollama |
 | ROS2 / Gazebo: MLP policy deployment | ✅ Stable locomotion + obstacle avoidance |
-| ROS2 / Gazebo: GNN policy deployment | ✅ Active — forward trot + LLM-guided navigation |
-| Yaw-rate PI correction (HAA joint offset) | ✅ Implemented — eliminates circular drift |
-| Vision node ground filtering (ROI + MIN_DIST) | ✅ Improved — top-40% ROI, 5th-pct closest |
-| Reactive obstacle avoidance (0.5 s loop) | ✅ Complete — side-wall guard included |
-| Training/deployment mismatch documented | ✅ See Deployment Engineering Notes above |
+| ROS2 / Gazebo: GNN policy deployment | ✅ Forward trot + LLM-guided hexapod navigation |
+| Yaw-rate PI correction (HAA joint offset) | ✅ Eliminates circular drift |
+| PyBullet stderr suppressor | ✅ fd-level redirect — clean training logs |
 | Publication plots | ✅ Generated |
-| Paper draft | 🔄 In progress |
-| Target venue | ICRA / CoRL workshop |
+| **Research paper** | ✅ **Submitted — IEEE ROBIO 2025** |
+| Target venue | **IEEE ROBIO 2025** |
 
 ---
 
@@ -674,3 +737,5 @@ See [LICENSE](./LICENSE).
 
 *Research project by Chaitanya Parate — MIT World Peace University, Pune.*
 *Conducted as part of an independent research initiative in robot learning and morphological generalization.*
+
+*Paper submitted to IEEE ROBIO 2025.*
