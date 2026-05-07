@@ -1,0 +1,494 @@
+[
+  {
+    "step": 4096,
+    "mean_reward": 107.37
+  },
+  {
+    "step": 8192,
+    "mean_reward": 115.12
+  },
+  {
+    "step": 12288,
+    "mean_reward": 117.36
+  },
+  {
+    "step": 16384,
+    "mean_reward": 119.64
+  },
+  {
+    "step": 20480,
+    "mean_reward": 102.98
+  },
+  {
+    "step": 24576,
+    "mean_reward": 115.55
+  },
+  {
+    "step": 28672,
+    "mean_reward": 102.77
+  },
+  {
+    "step": 32768,
+    "mean_reward": 106.02
+  },
+  {
+    "step": 36864,
+    "mean_reward": 103.87
+  },
+  {
+    "step": 40960,
+    "mean_reward": 112.87
+  },
+  {
+    "step": 45056,
+    "mean_reward": 110.58
+  },
+  {
+    "step": 49152,
+    "mean_reward": 110.65
+  },
+  {
+    "step": 53248,
+    "mean_reward": 112.48
+  },
+  {
+    "step": 57344,
+    "mean_reward": 119.97
+  },
+  {
+    "step": 61440,
+    "mean_reward": 119.5
+  },
+  {
+    "step": 65536,
+    "mean_reward": 110.49
+  },
+  {
+    "step": 69632,
+    "mean_reward": 111.07
+  },
+  {
+    "step": 73728,
+    "mean_reward": 111.74
+  },
+  {
+    "step": 77824,
+    "mean_reward": 118.04
+  },
+  {
+    "step": 81920,
+    "mean_reward": 115.84
+  },
+  {
+    "step": 86016,
+    "mean_reward": 111.05
+  },
+  {
+    "step": 90112,
+    "mean_reward": 115.45
+  },
+  {
+    "step": 94208,
+    "mean_reward": 121.88
+  },
+  {
+    "step": 98304,
+    "mean_reward": 106.12
+  },
+  {
+    "step": 102400,
+    "mean_reward": 111.04
+  },
+  {
+    "step": 106496,
+    "mean_reward": 104.71
+  },
+  {
+    "step": 110592,
+    "mean_reward": 115.05
+  },
+  {
+    "step": 114688,
+    "mean_reward": 112.02
+  },
+  {
+    "step": 118784,
+    "mean_reward": 104.41
+  },
+  {
+    "step": 122880,
+    "mean_reward": 117.37
+  },
+  {
+    "step": 126976,
+    "mean_reward": 110.56
+  },
+  {
+    "step": 131072,
+    "mean_reward": 110.73
+  },
+  {
+    "step": 135168,
+    "mean_reward": 112.76
+  },
+  {
+    "step": 139264,
+    "mean_reward": 105.9
+  },
+  {
+    "step": 143360,
+    "mean_reward": 114.59
+  },
+  {
+    "step": 147456,
+    "mean_reward": 113.87
+  },
+  {
+    "step": 151552,
+    "mean_reward": 116.82
+  },
+  {
+    "step": 155648,
+    "mean_reward": 103.86
+  },
+  {
+    "step": 159744,
+    "mean_reward": 116.2
+  },
+  {
+    "step": 163840,
+    "mean_reward": 115.83
+  },
+  {
+    "step": 167936,
+    "mean_reward": 115.04
+  },
+  {
+    "step": 172032,
+    "mean_reward": 118.87
+  },
+  {
+    "step": 176128,
+    "mean_reward": 113.39
+  },
+  {
+    "step": 180224,
+    "mean_reward": 110.51
+  },
+  {
+    "step": 184320,
+    "mean_reward": 120.8
+  },
+  {
+    "step": 188416,
+    "mean_reward": 114.97
+  },
+  {
+    "step": 192512,
+    "mean_reward": 124.09
+  },
+  {
+    "step": 196608,
+    "mean_reward": 119.89
+  },
+  {
+    "step": 200704,
+    "mean_reward": 122.17
+  },
+  {
+    "step": 204800,
+    "mean_reward": 114.34
+  },
+  {
+    "step": 208896,
+    "mean_reward": 113.44
+  },
+  {
+    "step": 212992,
+    "mean_reward": 113.79
+  },
+  {
+    "step": 217088,
+    "mean_reward": 112.5
+  },
+  {
+    "step": 221184,
+    "mean_reward": 110.47
+  },
+  {
+    "step": 225280,
+    "mean_reward": 108.84
+  },
+  {
+    "step": 229376,
+    "mean_reward": 106.88
+  },
+  {
+    "step": 233472,
+    "mean_reward": 111.47
+  },
+  {
+    "step": 237568,
+    "mean_reward": 114.06
+  },
+  {
+    "step": 241664,
+    "mean_reward": 120.46
+  },
+  {
+    "step": 245760,
+    "mean_reward": 108.02
+  },
+  {
+    "step": 249856,
+    "mean_reward": 113.86
+  },
+  {
+    "step": 253952,
+    "mean_reward": 105.29
+  },
+  {
+    "step": 258048,
+    "mean_reward": 122.37
+  },
+  {
+    "step": 262144,
+    "mean_reward": 114.82
+  },
+  {
+    "step": 266240,
+    "mean_reward": 117.37
+  },
+  {
+    "step": 270336,
+    "mean_reward": 111.98
+  },
+  {
+    "step": 274432,
+    "mean_reward": 117.49
+  },
+  {
+    "step": 278528,
+    "mean_reward": 107.62
+  },
+  {
+    "step": 282624,
+    "mean_reward": 106.25
+  },
+  {
+    "step": 286720,
+    "mean_reward": 118.03
+  },
+  {
+    "step": 290816,
+    "mean_reward": 112.72
+  },
+  {
+    "step": 294912,
+    "mean_reward": 109.17
+  },
+  {
+    "step": 299008,
+    "mean_reward": 112.19
+  },
+  {
+    "step": 303104,
+    "mean_reward": 115.47
+  },
+  {
+    "step": 307200,
+    "mean_reward": 117.4
+  },
+  {
+    "step": 311296,
+    "mean_reward": 109.39
+  },
+  {
+    "step": 315392,
+    "mean_reward": 113.49
+  },
+  {
+    "step": 319488,
+    "mean_reward": 113.96
+  },
+  {
+    "step": 323584,
+    "mean_reward": 120.41
+  },
+  {
+    "step": 327680,
+    "mean_reward": 106.76
+  },
+  {
+    "step": 331776,
+    "mean_reward": 118.85
+  },
+  {
+    "step": 335872,
+    "mean_reward": 109.94
+  },
+  {
+    "step": 339968,
+    "mean_reward": 106.55
+  },
+  {
+    "step": 344064,
+    "mean_reward": 118.72
+  },
+  {
+    "step": 348160,
+    "mean_reward": 110.79
+  },
+  {
+    "step": 352256,
+    "mean_reward": 122.04
+  },
+  {
+    "step": 356352,
+    "mean_reward": 114.31
+  },
+  {
+    "step": 360448,
+    "mean_reward": 121.77
+  },
+  {
+    "step": 364544,
+    "mean_reward": 113.38
+  },
+  {
+    "step": 368640,
+    "mean_reward": 112.69
+  },
+  {
+    "step": 372736,
+    "mean_reward": 112.06
+  },
+  {
+    "step": 376832,
+    "mean_reward": 112.5
+  },
+  {
+    "step": 380928,
+    "mean_reward": 112.36
+  },
+  {
+    "step": 385024,
+    "mean_reward": 115.08
+  },
+  {
+    "step": 389120,
+    "mean_reward": 117.69
+  },
+  {
+    "step": 393216,
+    "mean_reward": 114.13
+  },
+  {
+    "step": 397312,
+    "mean_reward": 113.16
+  },
+  {
+    "step": 401408,
+    "mean_reward": 114.48
+  },
+  {
+    "step": 405504,
+    "mean_reward": 111.75
+  },
+  {
+    "step": 409600,
+    "mean_reward": 116.96
+  },
+  {
+    "step": 413696,
+    "mean_reward": 115.94
+  },
+  {
+    "step": 417792,
+    "mean_reward": 118.96
+  },
+  {
+    "step": 421888,
+    "mean_reward": 112.42
+  },
+  {
+    "step": 425984,
+    "mean_reward": 111.7
+  },
+  {
+    "step": 430080,
+    "mean_reward": 125.26
+  },
+  {
+    "step": 434176,
+    "mean_reward": 112.59
+  },
+  {
+    "step": 438272,
+    "mean_reward": 116.04
+  },
+  {
+    "step": 442368,
+    "mean_reward": 118.35
+  },
+  {
+    "step": 446464,
+    "mean_reward": 117.89
+  },
+  {
+    "step": 450560,
+    "mean_reward": 121.37
+  },
+  {
+    "step": 454656,
+    "mean_reward": 117.55
+  },
+  {
+    "step": 458752,
+    "mean_reward": 111.01
+  },
+  {
+    "step": 462848,
+    "mean_reward": 120.65
+  },
+  {
+    "step": 466944,
+    "mean_reward": 118.27
+  },
+  {
+    "step": 471040,
+    "mean_reward": 110.17
+  },
+  {
+    "step": 475136,
+    "mean_reward": 121.14
+  },
+  {
+    "step": 479232,
+    "mean_reward": 118.71
+  },
+  {
+    "step": 483328,
+    "mean_reward": 122.54
+  },
+  {
+    "step": 487424,
+    "mean_reward": 121.6
+  },
+  {
+    "step": 491520,
+    "mean_reward": 118.75
+  },
+  {
+    "step": 495616,
+    "mean_reward": 117.04
+  },
+  {
+    "step": 499712,
+    "mean_reward": 121.8
+  },
+  {
+    "step": 503808,
+    "mean_reward": 119.15
+  }
+]
