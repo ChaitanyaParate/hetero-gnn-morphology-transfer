@@ -7,6 +7,8 @@ try:
     import pybullet_data
 except ImportError:
     raise ImportError('pip install pybullet')
+import contextlib, os
+
 CONTROLLABLE = {'revolute', 'continuous', 'prismatic'}
 KP = 150.0
 KD = 5.0
@@ -30,6 +32,19 @@ NOMINAL_POSE_PER_JOINT = {
     'RL_hip_joint':  0.0,  'RL_thigh_joint':  0.70, 'RL_calf_joint': -1.40,
     'RR_hip_joint':  0.0,  'RR_thigh_joint':  0.70, 'RR_calf_joint': -1.40,
 }
+
+@contextlib.contextmanager
+def _suppress_bullet():
+    """Silence C-level PyBullet b3Warning messages (stderr fd redirect)."""
+    devnull_fd = os.open(os.devnull, os.O_WRONLY)
+    old_stderr  = os.dup(2)
+    try:
+        os.dup2(devnull_fd, 2)
+        yield
+    finally:
+        os.dup2(old_stderr, 2)
+        os.close(old_stderr)
+        os.close(devnull_fd)
 
 class RobotEnvBullet(gym.Env):
     metadata = {'render_modes': ['human', 'direct']}
@@ -98,8 +113,9 @@ class RobotEnvBullet(gym.Env):
             p.removeBody(self._robot_id)
         start_pos = [0.0, 0.0, 0.5]
         start_orient = p.getQuaternionFromEuler([np.random.uniform(-0.05, 0.05), np.random.uniform(-0.05, 0.05), 0.0])
-        robot_id = p.loadURDF(self.urdf_path, start_pos, start_orient, useFixedBase=False,
-                              flags=p.URDF_USE_INERTIA_FROM_FILE | p.URDF_IGNORE_VISUAL_SHAPES)
+        with _suppress_bullet():
+            robot_id = p.loadURDF(self.urdf_path, start_pos, start_orient, useFixedBase=False,
+                                  flags=p.URDF_USE_INERTIA_FROM_FILE | p.URDF_IGNORE_VISUAL_SHAPES)
 
         self._robot_id = robot_id
         num_joints = p.getNumJoints(robot_id)
@@ -139,7 +155,8 @@ class RobotEnvBullet(gym.Env):
         if self.terrain == 'slope' and self.slope_angle != 0.0:
             # Tilt the ground plane
             slope_quat = p.getQuaternionFromEuler([0.0, self.slope_angle, 0.0])
-            plane_id = p.loadURDF('plane.urdf', [0, 0, 0], slope_quat)
+            with _suppress_bullet():
+                plane_id = p.loadURDF('plane.urdf', [0, 0, 0], slope_quat)
         elif self.terrain == 'uneven' and self.height_noise_scale > 0.0:
             # Heightfield terrain centered at origin
             N = 64  # grid resolution (64x64 = 6.4m x 6.4m at 0.1m/cell)
@@ -163,7 +180,8 @@ class RobotEnvBullet(gym.Env):
             )
             p.changeDynamics(plane_id, -1, lateralFriction=PLANE_LATERAL_FRICTION)
         else:
-            plane_id = p.loadURDF('plane.urdf')
+            with _suppress_bullet():
+                plane_id = p.loadURDF('plane.urdf')
             p.changeDynamics(plane_id, -1, lateralFriction=PLANE_LATERAL_FRICTION,
                              spinningFriction=PLANE_SPINNING_FRICTION, rollingFriction=PLANE_ROLLING_FRICTION)
         self._load_robot()
