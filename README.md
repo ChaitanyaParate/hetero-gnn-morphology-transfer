@@ -330,60 +330,80 @@ The GNN has no such constraint: joint embeddings are computed per-node through s
 ```
 .
 ├── morpho_gnn_robot/
-│   ├── Training_Location/           # Core RL training & transfer code
-│   │   ├── gnn_actor_critic.py      # SlimHeteroGNNActorCritic (31,582 params)
-│   │   ├── train_gnn_ppo.py         # PPO training loop (12M steps)
-│   │   ├── robot_env_bullet.py      # PyBullet Gym environment (w/ stderr suppressor)
-│   │   ├── urdf_to_graph.py         # URDF → PyTorch Geometric graph
-│   │   ├── finetune_transfer.py     # Staged fine-tuning on target morphologies
-│   │   ├── eval_comprehensive.py    # Zero-shot vs fine-tuned benchmark
-│   │   ├── run_llm_policy.py        # LLM command → GNN policy (standalone)
+│   ├── Training_Location/               # Core RL training & transfer code
+│   │   ├── gnn_actor_critic.py          # SlimHeteroGNNActorCritic (31,582 params)
+│   │   ├── train_gnn_ppo.py             # PPO training loop (12M steps, 5 seeds)
+│   │   ├── robot_env_bullet.py          # PyBullet Gym env (w/ PyBullet stderr suppressor)
+│   │   ├── urdf_to_graph.py             # URDF → PyTorch Geometric graph
+│   │   ├── finetune_transfer.py         # Staged fine-tuning on target morphologies
+│   │   ├── eval_comprehensive.py        # Zero-shot vs fine-tuned benchmark
+│   │   ├── eval_third_party_transfer.py # Unitree zero-shot evaluation
+│   │   ├── evaluate_policies.py         # General policy evaluation script
+│   │   ├── run_llm_policy.py            # LLM command → GNN policy (standalone PyBullet)
 │   │   ├── test_morphology_transfer.py  # Zero-shot quad→hex transfer demo
-│   │   ├── generate_hexapod.py      # Procedural hexapod URDF generator
-│   │   ├── hexapod_anymal.urdf      # Generated 18-DOF hexapod URDF
-│   │   ├── anymal_stripped.urdf     # Cleaned 12-DOF quadruped URDF
-│   │   ├── aliengo_stripped.urdf    # Unitree Aliengo (collision only)
-│   │   ├── go1_stripped.urdf        # Unitree Go1 (collision only)
-│   │   └── stripped_urdf_maker.py   # URDF cleaning utility
+│   │   ├── generate_hexapod.py          # Procedural 18-DOF hexapod URDF generator
+│   │   ├── anymal_stripped.urdf         # Cleaned 12-DOF quadruped URDF
+│   │   ├── anymal.urdf                  # Full ANYmal URDF
+│   │   ├── hexapod_anymal.urdf          # Generated 18-DOF hexapod URDF
+│   │   ├── eval_results.json            # Zero-shot evaluation results
+│   │   ├── eval_results_transfer.json   # Transfer evaluation results
+│   │   ├── eval_results_unitree.json    # Unitree evaluation results
+│   │   └── eval_comprehensive_results.json
 │   │
-│   ├── Training_MLP/                # MLP baseline (demonstrates transfer failure)
-│   │   ├── mlp_actor_critic.py      # Standard MLP policy (210,457 params)
-│   │   ├── train_mlp_ppo.py         # MLP PPO training
-│   │   ├── robot_env_bullet.py      # Same environment
-│   │   └── test_mlp_transfer_failure.py
+│   ├── Training_MLP/                    # MLP baseline (demonstrates transfer failure)
+│   │   ├── mlp_actor_critic.py          # Standard MLP policy (210,457 params)
+│   │   ├── train_mlp_ppo.py             # MLP PPO training (12M steps, 5 seeds)
+│   │   ├── robot_env_bullet.py          # Same PyBullet environment
+│   │   ├── generate_hexapod.py
+│   │   ├── anymal_stripped.urdf
+│   │   ├── anymal.urdf
+│   │   └── hexapod_anymal.urdf
 │   │
-│   ├── plots/                       # Publication-ready figures
+│   ├── URDFs/                           # Third-party robot URDFs
+│   │   ├── aliengo_stripped.urdf        # Unitree Aliengo (collision geometry only)
+│   │   ├── aliengo.urdf                 # Full Aliengo URDF
+│   │   ├── go1_stripped.urdf            # Unitree Go1 (collision geometry only)
+│   │   └── go1.urdf                     # Full Go1 URDF
+│   │
+│   ├── plots/                           # Publication-ready figures
 │   │   ├── zero_shot_transfer_barplot.png/.pdf
 │   │   └── zero_shot_transfer_boxplot.png/.pdf
 │   │
-│   └── morpho_ros2_ws/              # ROS2 workspace (Gazebo deployment)
+│   └── morpho_ros2_ws/                  # ROS2 Jazzy / Gazebo Harmonic workspace
 │       └── src/morpho_robot/
 │           ├── morpho_robot/
-│           │   ├── gnn_policy_node.py
-│           │   ├── llm_planner_node.py
-│           │   ├── skill_translator_node.py
-│           │   ├── MLP_policy_node.py
-│           │   ├── vision_node.py
-│           │   ├── gnn_actor_critic.py
-│           │   └── urdf_to_graph.py
+│           │   ├── gnn_policy_node.py       # 200Hz GNN inference loop
+│           │   ├── MLP_policy_node.py       # 200Hz MLP inference loop
+│           │   ├── llm_planner_node.py      # Ollama LLM → /llm_action
+│           │   ├── skill_translator_node.py # Plan → /goal_pose
+│           │   ├── vision_node.py           # YOLOv8 + depth perception
+│           │   ├── gnn_actor_critic.py      # (copy for ROS2 node)
+│           │   └── urdf_to_graph.py         # (copy for ROS2 node)
+│           ├── urdf/anymal_stripped.urdf
 │           ├── launch/morpho_robot.launch.py
 │           ├── config/bridge.yaml
-│           ├── urdf/anymal.urdf
 │           └── worlds/warehouse_world.sdf
 │
-├── GNN_Fine-tuning_output/          # Kaggle fine-tuning results (curves tracked)
-│   ├── Hexapod/curve_hexapod.json   # 500K-step reward curve (3.8× gain)
+├── GNN_Fine-tuning_output/              # Kaggle fine-tuning learning curves (tracked)
+│   ├── Hexapod/curve_hexapod.json       # 500K steps → 3.8× reward gain
 │   ├── aliengo/curve_aliengo.json
 │   └── go1/curve_go1.json
 │
-├── kaggle_package/                  # Deployment bundle for Kaggle CPU training
-│   ├── finetune_transfer.py
-│   ├── robot_env_bullet.py
-│   ├── gnn_actor_critic.py
-│   ├── urdf_to_graph.py
-│   ├── *_stripped.urdf              # Stripped URDFs for all morphologies
-│   └── seed2_final.pt               # Base checkpoint (gitignored)
+├── kaggle_gnn_finetune/                 # Kaggle notebook + deployment bundle
+│   └── kaggle_package/
+│       ├── finetune_transfer.py
+│       ├── robot_env_bullet.py
+│       ├── gnn_actor_critic.py
+│       ├── urdf_to_graph.py
+│       ├── anymal.urdf / hexapod_anymal.urdf
+│       ├── aliengo_stripped.urdf / go1_stripped.urdf
+│       └── seed2_final.pt               # Base checkpoint (gitignored)
 │
+├── kaggle_package/                      # Flat copy used for Kaggle dataset upload
+│   └── (same contents as above)
+│
+├── research_papers/                     # Reference papers
+├── no_push/                             # Paper drafts & submission (gitignored)
 ├── .gitignore
 ├── LICENSE
 └── README.md
