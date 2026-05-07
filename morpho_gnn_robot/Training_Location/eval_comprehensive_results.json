@@ -1,44 +1,75 @@
 {
-  "terrain": {
-    "flat": {
-      "mean": 2429.26,
-      "std": 667.11,
+  "transfer": {
+    "anymal_quad": {
+      "label": "ANYmal Quadruped (training)",
+      "mean": 2409.23,
+      "std": 575.4,
       "mean_steps": 1000,
       "success_rate": 100.0,
       "n_episodes": 20,
       "mean_fall_step": null
     },
-    "slope_5deg": {
-      "mean": 2440.07,
-      "std": 780.73,
-      "mean_steps": 953,
-      "success_rate": 95.0,
-      "n_episodes": 20,
-      "mean_fall_step": 60
-    },
-    "slope_10deg": {
-      "mean": 186.81,
-      "std": 32.76,
-      "mean_steps": 54.9,
+    "anymal_hex": {
+      "label": "ANYmal Hexapod (zero-shot)",
+      "mean": 110.29,
+      "std": 35.79,
+      "mean_steps": 47.3,
       "success_rate": 0.0,
       "n_episodes": 20,
-      "mean_fall_step": 54.9
+      "mean_fall_step": 47.3
     },
-    "uneven_2cm": {
-      "mean": 135.13,
-      "std": 0.0,
-      "mean_steps": 51,
+    "aliengo": {
+      "label": "Unitree Aliengo (zero-shot)",
+      "mean": 300.37,
+      "std": 101.81,
+      "mean_steps": 97.5,
       "success_rate": 0.0,
       "n_episodes": 20,
-      "mean_fall_step": 51
+      "mean_fall_step": 97.5
     },
-    "uneven_4cm": {
-      "mean": 85.84,
-      "std": 0.0,
-      "mean_steps": 33,
+    "go1": {
+      "label": "Unitree Go1 (zero-shot)",
+      "mean": 526.5,
+      "std": 304.72,
+      "mean_steps": 184.2,
       "success_rate": 0.0,
       "n_episodes": 20,
-      "mean_fall_step": 33
+      "mean_fall_step": 184.2
+    },
+    "hexapod": {
+      "label": "ANYmal Hexapod (fine-tuned)",
+      "mean": 111.88,
+      "std": 25.52,
+      "mean_steps": 49.5,
+      "success_rate": 0.0,
+      "n_episodes": 20,
+      "mean_fall_step": 49.5
+    }
+  },
+  "finetuned": {
+    "hexapod": {
+      "mean": 416.18,
+      "std": 114.18,
+      "mean_steps": 192.6,
+      "success_rate": 0.0,
+      "n_episodes": 20,
+      "mean_fall_step": 192.6
+    },
+    "aliengo": {
+      "mean": 112.31,
+      "std": 29.32,
+      "mean_steps": 59.9,
+      "success_rate": 0.0,
+      "n_episodes": 20,
+      "mean_fall_step": 59.9
+    },
+    "go1": {
+      "mean": 282.24,
+      "std": 62.4,
+      "mean_steps": 141.1,
+      "success_rate": 0.0,
+      "n_episodes": 20,
+      "mean_fall_step": 141.1
     }
   }
 }
