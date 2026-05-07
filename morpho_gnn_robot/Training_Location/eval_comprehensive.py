@@ -51,6 +51,12 @@ ROBOTS = {
         'height_threshold': 0.18,
         'label':            'Unitree Go1 (zero-shot)',
     },
+    # Aliases used by finetune_transfer.py target names
+    'hexapod': {
+        'urdf':             'hexapod_anymal.urdf',
+        'height_threshold': 0.15,
+        'label':            'ANYmal Hexapod (fine-tuned)',
+    },
 }
 
 TERRAIN_TESTS = [
@@ -190,7 +196,7 @@ def eval_terrain(ckpt_path, n_episodes=20):
 
 def eval_finetuned(ckpt_path, morphology, n_episodes=20):
     """Evaluate a fine-tuned checkpoint."""
-    cfg = ROBOTS[morphology]
+    cfg  = ROBOTS[morphology]
     urdf = cfg['urdf']
     gb   = URDFGraphBuilder(urdf, add_body_node=True)
     n    = gb.action_dim
@@ -200,11 +206,16 @@ def eval_finetuned(ckpt_path, morphology, n_episodes=20):
     model.load_state_dict(ckpt['agent'])
     model.eval()
 
-    q_mean = ckpt.get('obs_norm_mean', np.zeros(n*2+6))
-    q_var  = ckpt.get('obs_norm_var',  np.ones(n*2+6))
-    norm_fn = build_obs_norm(n, q_mean[:30], q_var[:30])
+    # Use the normaliser that was built during fine-tuning
+    raw_mean = ckpt.get('obs_norm_mean', np.zeros(n*2+6))
+    raw_var  = ckpt.get('obs_norm_var',  np.ones(n*2+6))
+    # build_obs_norm expects a 30-dim base (from 12-joint quadruped)
+    base_mean = raw_mean[:30] if len(raw_mean) >= 30 else np.pad(raw_mean, (0, 30 - len(raw_mean)), constant_values=0)
+    base_var  = raw_var[:30]  if len(raw_var)  >= 30 else np.pad(raw_var,  (0, 30 - len(raw_var)),  constant_values=1)
+    norm_fn = build_obs_norm(n, base_mean, base_var)
 
-    print(f'\n─── Fine-tuned {morphology} (step={ckpt.get("global_step",0):,}) ───')
+    label = cfg.get('label', morphology)
+    print(f'\n─── Fine-tuned {label} (step={ckpt.get("global_step",0):,}) ───')
     env = RobotEnvBullet(urdf, render_mode=None,
                          height_threshold=cfg['height_threshold'],
                          max_episode_steps=1000)
