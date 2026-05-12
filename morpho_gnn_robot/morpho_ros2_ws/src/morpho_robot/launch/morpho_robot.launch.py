@@ -110,10 +110,16 @@ def generate_launch_description():
 
     mlp_checkpoint_arg = DeclareLaunchArgument(
         "mlp_checkpoint",
-        default_value="/mnt/newvolume/Programming/Python/Deep_Learning/Relational_Bias_for_Morphological_Generalization/morpho_gnn_robot/Training_MLP/checkpoints/mlp_ppo_6303744.pt",
+        default_value="/mnt/newvolume/Programming/Python/Deep_Learning/Relational_Bias_for_Morphological_Generalization/morpho_gnn_robot/Training_MLP/checkpoints/best/mlp_ppo_10223616.pt",
         description="Absolute path to .pt MLP checkpoint. Empty = random init.",
     )
 #mlp_ppo_6303744.pt
+
+    device_arg = DeclareLaunchArgument(
+        "device",
+        default_value="cpu",
+        description="PyTorch device for policy inference: cpu | cuda",
+    )
     speed_multiplier_arg = DeclareLaunchArgument(
         "speed_multiplier",
         default_value="1.0",
@@ -308,7 +314,7 @@ def generate_launch_description():
                 cmd=[
                     '/mnt/newvolume/Programming/Python/Deep_Learning/Relational_Bias_for_Morphological_Generalization/.venv/bin/python',
                     '/mnt/newvolume/Programming/Python/Deep_Learning/Relational_Bias_for_Morphological_Generalization/morpho_gnn_robot/morpho_ros2_ws/src/morpho_robot/morpho_robot/vision_node.py',
-                    '--yolo_model', 'yolov8s.pt',
+                    '--yolo_model', 'yolov8n.pt',
                     '--conf', '0.4'
                 ],
                 output='screen',
@@ -406,7 +412,7 @@ def generate_launch_description():
                     LaunchConfiguration("mlp_checkpoint"),
                     '--urdf',
                     PathJoinSubstitution([FindPackageShare(PKG), "urdf", LaunchConfiguration("urdf")]),
-                    '--device', 'cuda',
+                    '--device', LaunchConfiguration("device"),
                     '--action_remap', LaunchConfiguration("action_remap"),
                     '--odom_in_base_frame', LaunchConfiguration("odom_in_base_frame"),
                     '--speed_multiplier', LaunchConfiguration("speed_multiplier"),
@@ -428,7 +434,7 @@ def generate_launch_description():
                     LaunchConfiguration("gnn_checkpoint"),
                     '--urdf',
                     PathJoinSubstitution([FindPackageShare(PKG), "urdf", LaunchConfiguration("urdf")]),
-                    '--device', 'cuda',
+                    '--device', LaunchConfiguration("device"),
                 ],
                 output='screen',
             )
@@ -470,6 +476,7 @@ def generate_launch_description():
             speed_multiplier_arg,
             log_level_arg,
             spawn_yaw_arg,
+            device_arg,
             # Nodes -- order matters due to TimerAction delays
             robot_state_publisher,  # immediate
             *gazebo,                 # immediate
