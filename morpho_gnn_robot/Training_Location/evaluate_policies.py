@@ -3,8 +3,9 @@ import numpy as np
 import torch
 import torch.nn as nn
 
-TRAIN_LOC = '/mnt/newvolume/Programming/Python/Deep_Learning/Relational_Bias_for_Morphological_Generalization/morpho_gnn_robot/Training_Location'
-TRAIN_MLP = '/mnt/newvolume/Programming/Python/Deep_Learning/Relational_Bias_for_Morphological_Generalization/morpho_gnn_robot/Training_MLP'
+# Paths relative to this file's location
+TRAIN_LOC = os.path.dirname(os.path.abspath(__file__))          # .../Training_Location/
+TRAIN_MLP = os.path.join(os.path.dirname(TRAIN_LOC), 'Training_MLP')
 sys.path.insert(0, TRAIN_LOC)
 
 QUAD_URDF = os.path.join(TRAIN_LOC, 'anymal_stripped.urdf')

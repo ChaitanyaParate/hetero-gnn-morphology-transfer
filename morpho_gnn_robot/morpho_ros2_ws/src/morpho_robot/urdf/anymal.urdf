@@ -14,7 +14,7 @@
         <visual>      
             <origin rpy="0 0 0" xyz="0 0 0"/>      
             <geometry>        
-                <mesh filename="file:///mnt/newvolume/Programming/Python/Deep_Learning/Relational_Bias_for_Morphological_Generalization/morpho_gnn_robot/morpho_ros2_ws/install/morpho_robot/share/morpho_robot/meshes/anymal_base.dae" scale="0.001 0.001     0.001"/>      
+                <mesh filename="package://morpho_robot/meshes/anymal_base.dae" scale="0.001 0.001     0.001"/>      
             </geometry>      
             <material name="anymal_material"/>    
         </visual>    
@@ -96,7 +96,7 @@
         <visual>      
             <origin rpy="0 0 0.0" xyz="0 0 0"/>      
             <geometry>        
-                <mesh filename="file:///mnt/newvolume/Programming/Python/Deep_Learning/Relational_Bias_for_Morphological_Generalization/morpho_gnn_robot/morpho_ros2_ws/install/morpho_robot/share/morpho_robot/meshes/anymal_hip_l.dae" scale="0.001 0.001     0.001"/>      
+                <mesh filename="package://morpho_robot/meshes/anymal_hip_l.dae" scale="0.001 0.001     0.001"/>      
             </geometry>      
             <material name="anymal_material"/>    
         </visual>    
@@ -133,7 +133,7 @@
         <visual>      
             <origin rpy="0 0 0.0" xyz="0 0 0"/>      
             <geometry>        
-                <mesh filename="file:///mnt/newvolume/Programming/Python/Deep_Learning/Relational_Bias_for_Morphological_Generalization/morpho_gnn_robot/morpho_ros2_ws/install/morpho_robot/share/morpho_robot/meshes/anymal_thigh_l.dae" scale="0.001 0.001     0.001"/>      
+                <mesh filename="package://morpho_robot/meshes/anymal_thigh_l.dae" scale="0.001 0.001     0.001"/>      
             </geometry>      
             <material name="anymal_material"/>    
         </visual>    
@@ -178,7 +178,7 @@
         <visual>      
             <origin rpy="0 0 0.0" xyz="0 0 0"/>      
             <geometry>        
-                <mesh filename="file:///mnt/newvolume/Programming/Python/Deep_Learning/Relational_Bias_for_Morphological_Generalization/morpho_gnn_robot/morpho_ros2_ws/install/morpho_robot/share/morpho_robot/meshes/anymal_shank_l.dae" scale="0.001 0.001     0.001"/>      
+                <mesh filename="package://morpho_robot/meshes/anymal_shank_l.dae" scale="0.001 0.001     0.001"/>      
             </geometry>      
             <material name="anymal_material"/>    
         </visual>    
@@ -217,7 +217,7 @@
         <visual>      
             <origin rpy="0 0 0.0" xyz="0 0 0.032"/>      
             <geometry>        
-                <mesh filename="file:///mnt/newvolume/Programming/Python/Deep_Learning/Relational_Bias_for_Morphological_Generalization/morpho_gnn_robot/morpho_ros2_ws/install/morpho_robot/share/morpho_robot/meshes/anymal_foot.dae" scale="0.001 0.001     0.001"/>      
+                <mesh filename="package://morpho_robot/meshes/anymal_foot.dae" scale="0.001 0.001     0.001"/>      
             </geometry>      
             <material name="anymal_material"/>    
         </visual>    
@@ -266,7 +266,7 @@
         <visual>      
             <origin rpy="0 0 0.0" xyz="0 0 0"/>      
             <geometry>        
-                <mesh filename="file:///mnt/newvolume/Programming/Python/Deep_Learning/Relational_Bias_for_Morphological_Generalization/morpho_gnn_robot/morpho_ros2_ws/install/morpho_robot/share/morpho_robot/meshes/anymal_hip_r.dae" scale="0.001 0.001     0.001"/>      
+                <mesh filename="package://morpho_robot/meshes/anymal_hip_r.dae" scale="0.001 0.001     0.001"/>      
             </geometry>      
             <material name="anymal_material"/>    
         </visual>    
@@ -303,7 +303,7 @@
         <visual>      
             <origin rpy="0 0 0.0" xyz="0 0 0"/>      
             <geometry>        
-                <mesh filename="file:///mnt/newvolume/Programming/Python/Deep_Learning/Relational_Bias_for_Morphological_Generalization/morpho_gnn_robot/morpho_ros2_ws/install/morpho_robot/share/morpho_robot/meshes/anymal_thigh_r.dae" scale="0.001 0.001     0.001"/>      
+                <mesh filename="package://morpho_robot/meshes/anymal_thigh_r.dae" scale="0.001 0.001     0.001"/>      
             </geometry>      
             <material name="anymal_material"/>    
         </visual>    
@@ -348,7 +348,7 @@
         <visual>      
             <origin rpy="0 0 0.0" xyz="0 0 0"/>      
             <geometry>        
-                <mesh filename="file:///mnt/newvolume/Programming/Python/Deep_Learning/Relational_Bias_for_Morphological_Generalization/morpho_gnn_robot/morpho_ros2_ws/install/morpho_robot/share/morpho_robot/meshes/anymal_shank_r.dae" scale="0.001 0.001     0.001"/>      
+                <mesh filename="package://morpho_robot/meshes/anymal_shank_r.dae" scale="0.001 0.001     0.001"/>      
             </geometry>      
             <material name="anymal_material"/>    
         </visual>    
@@ -386,7 +386,7 @@
         <visual>      
             <origin rpy="0 0 0.0" xyz="0 0 0.032"/>      
             <geometry>        
-                <mesh filename="file:///mnt/newvolume/Programming/Python/Deep_Learning/Relational_Bias_for_Morphological_Generalization/morpho_gnn_robot/morpho_ros2_ws/install/morpho_robot/share/morpho_robot/meshes/anymal_foot.dae" scale="0.001 0.001     0.001"/>      
+                <mesh filename="package://morpho_robot/meshes/anymal_foot.dae" scale="0.001 0.001     0.001"/>      
             </geometry>      
             <material name="anymal_material"/>    
         </visual>    
@@ -435,7 +435,7 @@
         <visual>      
             <origin rpy="0 0 -3.14159265359" xyz="0 0 0"/>      
             <geometry>        
-                <mesh filename="file:///mnt/newvolume/Programming/Python/Deep_Learning/Relational_Bias_for_Morphological_Generalization/morpho_gnn_robot/morpho_ros2_ws/install/morpho_robot/share/morpho_robot/meshes/anymal_hip_r.dae" scale="0.001 0.001     0.001"/>      
+                <mesh filename="package://morpho_robot/meshes/anymal_hip_r.dae" scale="0.001 0.001     0.001"/>      
             </geometry>      
             <material name="anymal_material"/>    
         </visual>    
@@ -472,7 +472,7 @@
         <visual>      
             <origin rpy="0 0 -3.14159265359" xyz="0 0 0"/>      
             <geometry>        
-                <mesh filename="file:///mnt/newvolume/Programming/Python/Deep_Learning/Relational_Bias_for_Morphological_Generalization/morpho_gnn_robot/morpho_ros2_ws/install/morpho_robot/share/morpho_robot/meshes/anymal_thigh_r.dae" scale="0.001 0.001     0.001"/>      
+                <mesh filename="package://morpho_robot/meshes/anymal_thigh_r.dae" scale="0.001 0.001     0.001"/>      
             </geometry>      
             <material name="anymal_material"/>    
         </visual>    
@@ -517,7 +517,7 @@
         <visual>      
             <origin rpy="0 0 -3.14159265359" xyz="0 0 0"/>      
             <geometry>        
-                <mesh filename="file:///mnt/newvolume/Programming/Python/Deep_Learning/Relational_Bias_for_Morphological_Generalization/morpho_gnn_robot/morpho_ros2_ws/install/morpho_robot/share/morpho_robot/meshes/anymal_shank_r.dae" scale="0.001 0.001     0.001"/>      
+                <mesh filename="package://morpho_robot/meshes/anymal_shank_r.dae" scale="0.001 0.001     0.001"/>      
             </geometry>      
             <material name="anymal_material"/>    
         </visual>    
@@ -555,7 +555,7 @@
         <visual>      
             <origin rpy="0 0 -3.14159265359" xyz="0 0 0.032"/>      
             <geometry>        
-                <mesh filename="file:///mnt/newvolume/Programming/Python/Deep_Learning/Relational_Bias_for_Morphological_Generalization/morpho_gnn_robot/morpho_ros2_ws/install/morpho_robot/share/morpho_robot/meshes/anymal_foot.dae" scale="0.001 0.001     0.001"/>      
+                <mesh filename="package://morpho_robot/meshes/anymal_foot.dae" scale="0.001 0.001     0.001"/>      
             </geometry>      
             <material name="anymal_material"/>    
         </visual>    
@@ -604,7 +604,7 @@
         <visual>      
             <origin rpy="0 0 -3.14159265359" xyz="0 0 0"/>      
             <geometry>        
-                <mesh filename="file:///mnt/newvolume/Programming/Python/Deep_Learning/Relational_Bias_for_Morphological_Generalization/morpho_gnn_robot/morpho_ros2_ws/install/morpho_robot/share/morpho_robot/meshes/anymal_hip_l.dae" scale="0.001 0.001     0.001"/>      
+                <mesh filename="package://morpho_robot/meshes/anymal_hip_l.dae" scale="0.001 0.001     0.001"/>      
             </geometry>      
             <material name="anymal_material"/>    
         </visual>    
@@ -641,7 +641,7 @@
         <visual>      
             <origin rpy="0 0 -3.14159265359" xyz="0 0 0"/>      
             <geometry>        
-                <mesh filename="file:///mnt/newvolume/Programming/Python/Deep_Learning/Relational_Bias_for_Morphological_Generalization/morpho_gnn_robot/morpho_ros2_ws/install/morpho_robot/share/morpho_robot/meshes/anymal_thigh_l.dae" scale="0.001 0.001     0.001"/>      
+                <mesh filename="package://morpho_robot/meshes/anymal_thigh_l.dae" scale="0.001 0.001     0.001"/>      
             </geometry>      
             <material name="anymal_material"/>    
         </visual>    
@@ -686,7 +686,7 @@
         <visual>      
             <origin rpy="0 0 -3.14159265359" xyz="0 0 0"/>      
             <geometry>        
-                <mesh filename="file:///mnt/newvolume/Programming/Python/Deep_Learning/Relational_Bias_for_Morphological_Generalization/morpho_gnn_robot/morpho_ros2_ws/install/morpho_robot/share/morpho_robot/meshes/anymal_shank_l.dae" scale="0.001 0.001     0.001"/>      
+                <mesh filename="package://morpho_robot/meshes/anymal_shank_l.dae" scale="0.001 0.001     0.001"/>      
             </geometry>      
             <material name="anymal_material"/>    
         </visual>    
@@ -724,7 +724,7 @@
         <visual>      
             <origin rpy="0 0 -3.14159265359" xyz="0 0 0.032"/>      
             <geometry>        
-                <mesh filename="file:///mnt/newvolume/Programming/Python/Deep_Learning/Relational_Bias_for_Morphological_Generalization/morpho_gnn_robot/morpho_ros2_ws/install/morpho_robot/share/morpho_robot/meshes/anymal_foot.dae" scale="0.001 0.001     0.001"/>      
+                <mesh filename="package://morpho_robot/meshes/anymal_foot.dae" scale="0.001 0.001     0.001"/>      
             </geometry>      
             <material name="anymal_material"/>    
         </visual>    

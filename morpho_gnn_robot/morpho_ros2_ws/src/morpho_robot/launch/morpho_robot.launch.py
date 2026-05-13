@@ -61,6 +61,23 @@ def pkg_share(*rel_path: str) -> str:
 
 
 # ---------------------------------------------------------------------------
+# Portable path roots — anchored on the installed package share directory.
+# This is reliable regardless of symlink chains (__file__ is NOT used because
+# ros2 launch resolves it to the installed path, giving wrong depth counts).
+#
+#   get_package_share_directory(PKG)
+#       = <colcon_ws>/install/morpho_robot/share/morpho_robot
+#   _WS_ROOT   = <colcon_ws>/          (morpho_gnn_robot — contains install/)
+#   _PROJ_ROOT = parent of _WS_ROOT   (Relational_Bias_...)
+# ---------------------------------------------------------------------------
+_PKG_SHARE   = get_package_share_directory(PKG)
+_WS_ROOT     = os.path.normpath(os.path.join(_PKG_SHARE, '..', '..', '..', '..'))
+_PROJ_ROOT   = os.path.dirname(_WS_ROOT)
+_SRC_PKG_DIR = os.path.join(_WS_ROOT, 'morpho_ros2_ws', 'src', 'morpho_robot')
+_VENV_PYTHON = os.path.join(_PROJ_ROOT, '.venv', 'bin', 'python')
+
+
+# ---------------------------------------------------------------------------
 # Launch Description
 # ---------------------------------------------------------------------------
 
@@ -110,8 +127,8 @@ def generate_launch_description():
 
     mlp_checkpoint_arg = DeclareLaunchArgument(
         "mlp_checkpoint",
-        default_value="/mnt/newvolume/Programming/Python/Deep_Learning/Relational_Bias_for_Morphological_Generalization/morpho_gnn_robot/Training_MLP/checkpoints/best/mlp_ppo_10223616.pt",
-        description="Absolute path to .pt MLP checkpoint. Empty = random init.",
+        default_value=os.path.join(_WS_ROOT, 'Training_MLP', 'checkpoints', 'best', 'mlp_ppo_10223616.pt'),
+        description="Path to .pt MLP checkpoint. Empty = random init.",
     )
 #mlp_ppo_6303744.pt
 
@@ -188,11 +205,12 @@ def generate_launch_description():
 
     gz_resource_path = os.pathsep.join(
         [
-            pkg_share(),                        # package root
-            pkg_share("urdf"),                  # URDF meshes
+            pkg_share(),                        # package root (.../share/morpho_robot/)
+            os.path.dirname(pkg_share()),       # share/ parent → resolves model://morpho_robot/...
+            pkg_share("urdf"),                  # URDF directory
             pkg_share("worlds"),                # SDF worlds
             pkg_share("config"),                # bridge.yaml
-            pkg_share("meshes"),                # additional meshes
+            pkg_share("meshes"),                # mesh files
         ]
     )
 
@@ -312,8 +330,8 @@ def generate_launch_description():
         actions=[
             ExecuteProcess(
                 cmd=[
-                    '/mnt/newvolume/Programming/Python/Deep_Learning/Relational_Bias_for_Morphological_Generalization/.venv/bin/python',
-                    '/mnt/newvolume/Programming/Python/Deep_Learning/Relational_Bias_for_Morphological_Generalization/morpho_gnn_robot/morpho_ros2_ws/src/morpho_robot/morpho_robot/vision_node.py',
+                    _VENV_PYTHON,
+                    os.path.join(_SRC_PKG_DIR, 'morpho_robot', 'vision_node.py'),
                     '--yolo_model', 'yolov8n.pt',
                     '--conf', '0.4'
                 ],
@@ -406,8 +424,8 @@ def generate_launch_description():
             ExecuteProcess(
                 condition=LaunchConfigurationEquals("policy_type", "mlp"),
                 cmd=[
-                    '/mnt/newvolume/Programming/Python/Deep_Learning/Relational_Bias_for_Morphological_Generalization/.venv/bin/python',
-                    '/mnt/newvolume/Programming/Python/Deep_Learning/Relational_Bias_for_Morphological_Generalization/morpho_gnn_robot/morpho_ros2_ws/src/morpho_robot/morpho_robot/MLP_policy_node.py',
+                    _VENV_PYTHON,
+                    os.path.join(_SRC_PKG_DIR, 'morpho_robot', 'MLP_policy_node.py'),
                     '--checkpoint',
                     LaunchConfiguration("mlp_checkpoint"),
                     '--urdf',
@@ -428,8 +446,8 @@ def generate_launch_description():
             ExecuteProcess(
                 condition=LaunchConfigurationEquals("policy_type", "gnn"),
                 cmd=[
-                    '/mnt/newvolume/Programming/Python/Deep_Learning/Relational_Bias_for_Morphological_Generalization/.venv/bin/python',
-                    '/mnt/newvolume/Programming/Python/Deep_Learning/Relational_Bias_for_Morphological_Generalization/morpho_gnn_robot/morpho_ros2_ws/src/morpho_robot/morpho_robot/gnn_policy_node.py',
+                    _VENV_PYTHON,
+                    os.path.join(_SRC_PKG_DIR, 'morpho_robot', 'gnn_policy_node.py'),
                     '--checkpoint',
                     LaunchConfiguration("gnn_checkpoint"),
                     '--urdf',

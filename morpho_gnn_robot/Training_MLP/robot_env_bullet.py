@@ -252,7 +252,8 @@ class RobotEnvBullet(gym.Env):
         if p.isConnected(self._physics_client):
             p.disconnect(self._physics_client)
 if __name__ == '__main__':
-    URDF = '/mnt/newvolume/Programming/Python/Deep_Learning/Relational_Bias_for_Morphological_Generalization/morpho_gnn_robot/morpho_ros2_ws/src/morpho_robot/urdf/anymal.urdf'
+    URDF = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+                        'morpho_ros2_ws', 'src', 'morpho_robot', 'urdf', 'anymal.urdf')
     print('Launching RobotEnvBullet smoke test...')
     env = RobotEnvBullet(URDF, max_episode_steps=200, render_mode=None)
     obs, _ = env.reset()

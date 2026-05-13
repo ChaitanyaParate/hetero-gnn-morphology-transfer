@@ -210,7 +210,10 @@ class URDFGraphBuilder:
         return (pos, vel)
 if __name__ == '__main__':
     import sys
-    path = sys.argv[1] if len(sys.argv) > 1 else '/mnt/newvolume/Programming/Python/Deep_Learning/Relational_Bias_for_Morphological_Generalization/morpho_gnn_robot/morpho_ros2_ws/src/morpho_robot/urdf/anymal.urdf'
+    _default_urdf = os.path.join(
+        os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))),
+        'urdf', 'anymal.urdf')
+    path = sys.argv[1] if len(sys.argv) > 1 else _default_urdf
     rng = np.random.default_rng(42)
     b = URDFGraphBuilder(path, add_body_node=True)
     print('\n  node_roles tensor:', b.node_roles.tolist())

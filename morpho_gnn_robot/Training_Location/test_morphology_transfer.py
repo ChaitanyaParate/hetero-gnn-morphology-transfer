@@ -18,7 +18,7 @@ class RunningNorm:
 
     def normalize(self, x: np.ndarray) -> np.ndarray:
         return np.clip((x - self.mean) / (np.sqrt(self.var) + 1e-08), -self.clip, self.clip)
-BASE_DIR = '/mnt/newvolume/Programming/Python/Deep_Learning/Relational_Bias_for_Morphological_Generalization/morpho_gnn_robot/Training_Location'
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))  # .../Training_Location/
 HEXAPOD_URDF = os.path.join(BASE_DIR, 'generate_hexapod.py')
 HEXAPOD_URDF = os.path.join(BASE_DIR, 'hexapod_anymal.urdf')
 CHECKPOINT_DIR = os.path.join(BASE_DIR, 'checkpoints')

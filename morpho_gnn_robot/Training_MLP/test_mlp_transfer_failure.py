@@ -18,7 +18,7 @@ class MLPActorCritic(nn.Module):
         mean = self.actor(obs)
         val = self.critic(obs)
         return (mean, val)
-BASE_DIR = '/mnt/newvolume/Programming/Python/Deep_Learning/Relational_Bias_for_Morphological_Generalization/morpho_gnn_robot'
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))  # .../morpho_gnn_robot/
 HEXAPOD_URDF = os.path.join(BASE_DIR, 'Training_Location', 'hexapod_anymal.urdf')
 MLP_CHECKPOINT_DIR = os.path.join(BASE_DIR, 'Training_MLP', 'checkpoints')
 print('=====================================================')

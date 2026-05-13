@@ -1,7 +1,11 @@
 import xml.etree.ElementTree as ET
 import copy
-input_urdf = '/mnt/newvolume/Programming/Python/Deep_Learning/Relational_Bias_for_Morphological_Generalization/morpho_gnn_robot/Training_Location/anymal_stripped.urdf'
-output_urdf = '/mnt/newvolume/Programming/Python/Deep_Learning/Relational_Bias_for_Morphological_Generalization/morpho_gnn_robot/Training_Location/hexapod_anymal.urdf'
+import os
+_DIR = os.path.dirname(os.path.abspath(__file__))           # .../Training_MLP/
+_ROBOT_DIR = os.path.dirname(_DIR)                          # .../morpho_gnn_robot/
+_TRAIN_LOC = os.path.join(_ROBOT_DIR, 'Training_Location')
+input_urdf = os.path.join(_TRAIN_LOC, 'anymal_stripped.urdf')
+output_urdf = os.path.join(_TRAIN_LOC, 'hexapod_anymal.urdf')
 tree = ET.parse(input_urdf)
 root = tree.getroot()
 
