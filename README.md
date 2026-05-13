@@ -450,7 +450,7 @@ The entire environment (ROS2 Jazzy, PyTorch, Gazebo Harmonic, all Python deps) i
 
 #### Step 1 — Get the Docker image
 
-The pre-built image (`hetero_gnn_project.tar`, ~7.6 GB) is distributed separately from the source code. Copy it into the OS-specific installer folder.
+The pre-built image (`hetero_gnn_project.tar`, ~8.1 GB) is distributed separately from the source code. Copy it into the OS-specific installer folder.
 
 #### Step 2 — Run the setup script for your OS
 

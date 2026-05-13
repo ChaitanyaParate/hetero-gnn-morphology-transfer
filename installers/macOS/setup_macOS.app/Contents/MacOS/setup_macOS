@@ -84,7 +84,7 @@ if docker images --format "{{.Repository}}:{{.Tag}}" | grep -q "${IMAGE_NAME}"; 
     echo -e "${GREEN}✓  Image already loaded: ${IMAGE_NAME}${NC}"
 else
     echo -e "${CYAN}  Loading from: ${TAR_PATH}${NC}"
-    echo -e "${CYAN}  This may take a few minutes for the ~7.6 GB image...${NC}"
+    echo -e "${CYAN}  This may take a few minutes for the ~8.1 GB image...${NC}"
     docker load -i "${TAR_PATH}"
     echo -e "${GREEN}✓  Docker image loaded successfully.${NC}"
 fi

@@ -83,7 +83,7 @@ fi
 if docker images --format "{{.Repository}}:{{.Tag}}" | grep -q "${IMAGE_NAME}"; then
     echo -e "${GREEN}✓  Image already loaded: ${IMAGE_NAME}${NC}"
 else
-    echo -e "${CYAN}  Loading ~7.6 GB image — this may take a few minutes...${NC}"
+    echo -e "${CYAN}  Loading ~8.1 GB image — this may take a few minutes...${NC}"
     sudo docker load -i "${SCRIPT_DIR}/${TAR_FILE}"
     echo -e "${GREEN}✓  Docker image loaded.${NC}"
 fi

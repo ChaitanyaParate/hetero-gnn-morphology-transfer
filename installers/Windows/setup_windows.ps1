@@ -70,7 +70,7 @@ if ($existingImage) {
     Write-Ok "Image already loaded: $ImageName"
 } else {
     Write-Info "Loading from: $WslTarPath"
-    Write-Info "This may take a few minutes for the ~7.6 GB image..."
+    Write-Info "This may take a few minutes for the ~8.1 GB image..."
     wsl -- docker load -i "$WslTarPath"
     if ($LASTEXITCODE -ne 0) { Write-Err "docker load failed. Check the output above." }
     Write-Ok "Docker image loaded successfully."
