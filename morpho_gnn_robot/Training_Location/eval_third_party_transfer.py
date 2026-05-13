@@ -29,11 +29,8 @@ import statistics
 # ── paths ──────────────────────────────────────────────────────────────────────
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 URDF_DIR = os.path.join(BASE_DIR, '..', 'URDFs')
-NOTEBOOK_DIR = (
-    '/mnt/newvolume/Programming/Python/Deep_Learning/'
-    'Relational_Bias_for_Morphological_Generalization/'
-    'no_push/submi/sub/final/training_with_different_seed_notebooks'
-)
+NOTEBOOK_DIR = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)),
+    '../../training_with_different_seed_notebooks'))
 
 # Best stable GNN seed = Seed 2 (last-50-mean: 2269.54)
 DEFAULT_CHECKPOINT = os.path.join(NOTEBOOK_DIR, 'seed2_final.pt')

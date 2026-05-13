@@ -26,8 +26,8 @@ from gnn_actor_critic import SlimHeteroGNNActorCritic
 from urdf_to_graph import URDFGraphBuilder
 
 # ─── Checkpoint config ────────────────────────────────────────────────────
-BASE_CKPT = os.path.join(os.path.dirname(__file__),
-    '../../no_push/submi/sub/final/training_with_different_seed_notebooks/seed2_final.pt')
+BASE_CKPT = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)),
+    '../../training_with_different_seed_notebooks/seed2_final.pt'))
 
 # ─── Robot configs ─────────────────────────────────────────────────────────
 ROBOTS = {

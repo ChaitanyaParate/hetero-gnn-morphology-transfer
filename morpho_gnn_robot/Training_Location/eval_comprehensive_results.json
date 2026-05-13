@@ -2,8 +2,8 @@
   "transfer": {
     "anymal_quad": {
       "label": "ANYmal Quadruped (training)",
-      "mean": 2409.23,
-      "std": 575.4,
+      "mean": 2194.12,
+      "std": 509.53,
       "mean_steps": 1000,
       "success_rate": 100.0,
       "n_episodes": 20,
@@ -11,65 +11,81 @@
     },
     "anymal_hex": {
       "label": "ANYmal Hexapod (zero-shot)",
-      "mean": 110.29,
-      "std": 35.79,
-      "mean_steps": 47.3,
+      "mean": 94.16,
+      "std": 27.11,
+      "mean_steps": 46.6,
       "success_rate": 0.0,
       "n_episodes": 20,
-      "mean_fall_step": 47.3
+      "mean_fall_step": 46.6
     },
     "aliengo": {
       "label": "Unitree Aliengo (zero-shot)",
-      "mean": 300.37,
-      "std": 101.81,
-      "mean_steps": 97.5,
+      "mean": 299.22,
+      "std": 118.24,
+      "mean_steps": 90.8,
       "success_rate": 0.0,
       "n_episodes": 20,
-      "mean_fall_step": 97.5
+      "mean_fall_step": 90.8
     },
     "go1": {
       "label": "Unitree Go1 (zero-shot)",
-      "mean": 526.5,
-      "std": 304.72,
-      "mean_steps": 184.2,
+      "mean": 467.97,
+      "std": 282.67,
+      "mean_steps": 158.9,
       "success_rate": 0.0,
       "n_episodes": 20,
-      "mean_fall_step": 184.2
+      "mean_fall_step": 158.9
     },
     "hexapod": {
       "label": "ANYmal Hexapod (fine-tuned)",
-      "mean": 111.88,
-      "std": 25.52,
-      "mean_steps": 49.5,
+      "mean": 104.21,
+      "std": 35.36,
+      "mean_steps": 46.7,
       "success_rate": 0.0,
       "n_episodes": 20,
-      "mean_fall_step": 49.5
+      "mean_fall_step": 46.7
     }
   },
-  "finetuned": {
-    "hexapod": {
-      "mean": 416.18,
-      "std": 114.18,
-      "mean_steps": 192.6,
-      "success_rate": 0.0,
+  "terrain": {
+    "flat": {
+      "mean": 2417.48,
+      "std": 621.45,
+      "mean_steps": 1000,
+      "success_rate": 100.0,
       "n_episodes": 20,
-      "mean_fall_step": 192.6
+      "mean_fall_step": null
     },
-    "aliengo": {
-      "mean": 112.31,
-      "std": 29.32,
-      "mean_steps": 59.9,
-      "success_rate": 0.0,
+    "slope_5deg": {
+      "mean": 2091.99,
+      "std": 819.04,
+      "mean_steps": 905.6,
+      "success_rate": 90.0,
       "n_episodes": 20,
-      "mean_fall_step": 59.9
+      "mean_fall_step": 56
     },
-    "go1": {
-      "mean": 282.24,
-      "std": 62.4,
-      "mean_steps": 141.1,
+    "slope_10deg": {
+      "mean": 187.19,
+      "std": 37.34,
+      "mean_steps": 54.2,
       "success_rate": 0.0,
       "n_episodes": 20,
-      "mean_fall_step": 141.1
+      "mean_fall_step": 54.2
+    },
+    "uneven_2cm": {
+      "mean": 135.13,
+      "std": 0.0,
+      "mean_steps": 51,
+      "success_rate": 0.0,
+      "n_episodes": 20,
+      "mean_fall_step": 51
+    },
+    "uneven_4cm": {
+      "mean": 85.84,
+      "std": 0.0,
+      "mean_steps": 33,
+      "success_rate": 0.0,
+      "n_episodes": 20,
+      "mean_fall_step": 33
     }
   }
 }

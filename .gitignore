@@ -62,3 +62,6 @@ research_papers
 /kaggle_package/          # ignore root-level flat copy only
 !kaggle_gnn_finetune/     # track the notebook bundle
 finetune_checkpoints/
+training_with_different_seed_notebooks
+
+*.tar
