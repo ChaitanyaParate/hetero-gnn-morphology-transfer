@@ -1,0 +1,33 @@
+services:
+  hetero-gnn:
+    build: .
+    container_name: morpho_gnn_container
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [all]
+    environment:
+      - DISPLAY=${DISPLAY}
+      - QT_X11_NO_MITSHM=1
+      - NVIDIA_DRIVER_CAPABILITIES=all
+      # Force Qt to use the X11 backend (helps prevent Wayland crashes)
+      - QT_QPA_PLATFORM=xcb 
+      - __NV_PRIME_RENDER_OFFLOAD=1
+      # Forces OpenGL to render on the NVIDIA GPU instead of Intel
+      - __GLX_VENDOR_LIBRARY_NAME=nvidia
+    volumes:
+      - /tmp/.X11-unix:/tmp/.X11-unix:rw
+      # --- ADD THIS LINE BELOW ---
+      # This allows the container to talk to your Intel integrated graphics for display!
+      - /dev/dri:/dev/dri:rw 
+      # ---------------------------
+      - .:/workspace 
+      - /workspace/morpho_gnn_robot/morpho_ros2_ws/build
+      - /workspace/morpho_gnn_robot/morpho_ros2_ws/install
+      - /workspace/morpho_gnn_robot/morpho_ros2_ws/log
+    network_mode: host
+    stdin_open: true 
+    tty: true

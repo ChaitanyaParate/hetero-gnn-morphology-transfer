@@ -22,7 +22,9 @@ Submitted to **IEEE ROBIO 2026**.
   - [7. ROS2 / Gazebo Deployment Stack](#7-ros2--gazebo-deployment-stack)
 - [MLP Baseline & Why It Fails](#mlp-baseline--why-it-fails)
 - [Repository Structure](#repository-structure)
-- [Installation](#installation)
+- [Installation & Running](#installation--running)
+  - [Option A — Docker (Recommended)](#option-a--docker-recommended)
+  - [Option B — Manual Install](#option-b--manual-install)
 - [Usage](#usage)
   - [Train the GNN Policy](#train-the-gnn-policy)
   - [Run LLM-Guided Policy (PyBullet)](#run-llm-guided-policy-pybullet)
@@ -409,6 +411,22 @@ The GNN has no such constraint: joint embeddings are computed per-node through s
 ├── kaggle_package/                      # Flat copy for Kaggle dataset upload
 │   └── (identical contents to above)
 │
+├── installers/                          # OS-specific setup scripts (gitignored)
+│   ├── README.md                        # OS selection guide
+│   ├── Linux/
+│   │   ├── setup_linux.sh              # Automated Ubuntu/Linux setup
+│   │   └── README.md
+│   ├── Windows/
+│   │   ├── setup_windows.bat           # Double-click launcher
+│   │   ├── setup_windows.ps1           # PowerShell setup logic
+│   │   └── README.md
+│   └── macOS/
+│       ├── setup_macOS.app/            # Native macOS application bundle
+│       └── README.md
+│
+├── Dockerfile                           # Container image definition
+├── docker-compose.yml                   # Dev-mode container orchestration
+├── .dockerignore                        # Docker build context exclusions
 ├── .gitignore
 ├── LICENSE
 └── README.md
@@ -419,37 +437,80 @@ The GNN has no such constraint: joint embeddings are computed per-node through s
 #   *.pt / *.pth        — model checkpoints
 #   llama.cpp/          — LLM inference engine
 #   build/ install/ log/ — ROS2 colcon artifacts
+#   installers/         — setup scripts (distributed separately with the .tar)
 ```
 
 ---
 
-## Installation
+## Installation & Running
 
-### Dependencies
+### Option A — Docker (Recommended)
+
+The entire environment (ROS2 Jazzy, PyTorch, Gazebo Harmonic, all Python deps) is pre-built into a single Docker image. **No manual dependency installation required.**
+
+#### Step 1 — Get the Docker image
+
+The pre-built image (`hetero_gnn_project.tar`, ~7.6 GB) is distributed separately from the source code. Copy it into the OS-specific installer folder.
+
+#### Step 2 — Run the setup script for your OS
+
+| Operating System | Installer location | How to run |
+|---|---|---|
+| 🐧 **Ubuntu / Linux** | `installers/Linux/` | `chmod +x setup_linux.sh && ./setup_linux.sh` |
+| 🪟 **Windows 10/11** | `installers/Windows/` | Double-click `setup_windows.bat` |
+| 🍎 **macOS** | `installers/macOS/` | Double-click `setup_macOS.app` in Finder |
+
+Each installer folder contains a detailed `README.md` covering prerequisites, step-by-step instructions, and a troubleshooting guide.
+
+> **Hardware note:** An NVIDIA GPU is strictly required for full performance (CUDA + Gazebo hardware rendering). macOS is supported for inspection only — PyTorch falls back to CPU.
+
+#### Step 3 — You're in
+
+The setup script drops you into the ROS2 workspace inside the container:
+```
+root@...:/workspace/morpho_gnn_robot/morpho_ros2_ws#
+```
+All ROS2, Python, and Gazebo commands work immediately from here.
+
+#### Building the image yourself (optional)
+
+If you prefer to build from source instead of loading the pre-built `.tar`:
+```bash
+# Build (takes ~20–30 min; requires NVIDIA GPU + Docker + nvidia-container-toolkit)
+docker compose build
+
+# Launch (dev mode — mounts project directory live into /workspace)
+docker compose up
+```
+
+---
+
+### Option B — Manual Install
+
+For development or if Docker is not available.
+
+#### Python dependencies
 
 ```bash
 pip install torch torchvision
 pip install torch-geometric
-pip install pybullet
-pip install gymnasium
-pip install scipy numpy
+pip install pybullet gymnasium scipy numpy wandb
 
+# LLM models (via Ollama)
 ollama pull llama3.1:8b
 ollama pull qwen2.5:7b
-
-pip install wandb
 ```
 
-### ROS2 Deployment (additional)
+#### ROS2 Deployment (additional)
 
 ```bash
-sudo apt install ros-jazzy-desktop
+# Ubuntu 24.04 only
+sudo apt install ros-jazzy-desktop ros-jazzy-ros-gz
 
 cd morpho_gnn_robot/morpho_ros2_ws
-colcon build --symlink-install
+source /opt/ros/jazzy/setup.bash
+colcon build --symlink-install --packages-select morpho_robot
 source install/setup.bash
-
-pip install ollama rclpy
 ```
 
 ---
@@ -720,6 +781,7 @@ Checkpoints (`.pt`, `.pth`), W&B logs, build artifacts, and large binary weights
 - `wandb/`, `runs/` — experiment logs
 - `.venv/`, `__pycache__/`, `*.pyc`
 - `.env`, `*api_key*` — secrets
+- `installers/` — OS setup scripts (distributed separately alongside `hetero_gnn_project.tar`)
 
 ---
 

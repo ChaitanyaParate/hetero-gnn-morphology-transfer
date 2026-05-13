@@ -1,0 +1,19 @@
+# Ignore specific files
+gnn_ppo_1191936.pt
+
+
+# Ignore personal folders and papers
+no_push/
+research_papers/
+
+# Ignore local host build artifacts so they never copy over
+build/
+install/
+log/
+
+# Ignore Kaggle zips
+kaggle_gnn_finetune.zip
+
+llama.cpp
+
+installers/

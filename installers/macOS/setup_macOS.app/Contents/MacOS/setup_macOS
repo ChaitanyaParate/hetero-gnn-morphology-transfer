@@ -1,0 +1,118 @@
+#!/usr/bin/env bash
+# ==============================================================================
+# Setup Script: Hetero-GNN Morphology Transfer (macOS)
+# This is the executable inside the macOS .app bundle.
+# Double-click setup_macOS.app in Finder to run.
+# ==============================================================================
+
+set -e
+
+RED='\033[0;31m'; GREEN='\033[0;32m'; YELLOW='\033[1;33m'
+CYAN='\033[0;36m'; BOLD='\033[1m'; NC='\033[0m'
+
+# Re-launch in a visible Terminal window if not already running in one
+if [ -z "$SETUP_TERMINAL_OPEN" ]; then
+    SCRIPT_PATH="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/$(basename "${BASH_SOURCE[0]}")"
+    export SETUP_TERMINAL_OPEN=1
+    osascript -e "tell application \"Terminal\" to do script \"SETUP_TERMINAL_OPEN=1 bash '${SCRIPT_PATH}'\""
+    exit 0
+fi
+
+echo -e "${CYAN}
+╔══════════════════════════════════════════════════════════════╗
+║    Hetero-GNN Morphology Transfer — macOS Setup              ║
+║    ROS2 Jazzy  ·  PyTorch (CPU fallback)  ·  Gazebo          ║
+╚══════════════════════════════════════════════════════════════╝
+${NC}"
+
+echo -e "${RED}${BOLD}⚠  PERFORMANCE WARNING ⚠${NC}"
+echo -e "${YELLOW}  · Apple Silicon (M1/M2/M3/M4): Rosetta 2 emulation — very slow, CPU-only.${NC}"
+echo -e "${YELLOW}  · Intel Mac: PyTorch falls back to CPU. Gazebo uses software rendering.${NC}"
+echo -e "${YELLOW}  · For full GPU performance, use a Linux machine.${NC}\n"
+read -r -p "Understood. Continue? [y/N] " REPLY
+[[ "$REPLY" =~ ^[Yy]$ ]] || { echo "Setup cancelled."; exit 0; }
+
+# Locate installer directory (two levels up from Contents/MacOS/)
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+INSTALLER_DIR="$(cd "${SCRIPT_DIR}/../../../../" && pwd)"  # .app/Contents/MacOS -> macOS folder
+IMAGE_NAME="relational_bias_for_morphological_generalization-hetero-gnn:latest"
+TAR_FILE="hetero_gnn_project.tar"
+
+# ------------------------------------------------------------------------------
+# Step 1: Check Prerequisites
+# ------------------------------------------------------------------------------
+echo -e "\n${BOLD}[Step 1/3]${NC} Checking prerequisites..."
+
+# XQuartz
+if [ ! -d "/Applications/Utilities/XQuartz.app" ] && ! command -v xquartz &> /dev/null; then
+    echo -e "${YELLOW}⚠  XQuartz not found. Opening download page...${NC}"
+    open "https://www.xquartz.org/"
+    echo -e "${YELLOW}  1. Install XQuartz and REBOOT your Mac.${NC}"
+    echo -e "${YELLOW}  2. Open XQuartz → Preferences → Security → enable 'Allow connections from network clients'.${NC}"
+    echo -e "${YELLOW}  3. Then re-run this setup app.${NC}"
+    read -r -p "Press Enter to exit..."; exit 1
+fi
+echo -e "${GREEN}✓  XQuartz is installed.${NC}"
+
+# Docker Desktop
+if ! command -v docker &> /dev/null; then
+    echo -e "${YELLOW}⚠  Docker Desktop not found. Opening download page...${NC}"
+    open "https://www.docker.com/products/docker-desktop/"
+    echo -e "${YELLOW}  Install Docker Desktop and wait for it to start (whale icon in menu bar), then re-run.${NC}"
+    read -r -p "Press Enter to exit..."; exit 1
+fi
+echo -e "${GREEN}✓  Docker Desktop detected: $(docker --version)${NC}"
+
+# ------------------------------------------------------------------------------
+# Step 2: Load Docker Image
+# ------------------------------------------------------------------------------
+echo -e "\n${BOLD}[Step 2/3]${NC} Loading Docker image..."
+
+# Look for tar in the macOS installer folder (next to the .app bundle)
+if [ -f "${INSTALLER_DIR}/${TAR_FILE}" ]; then
+    TAR_PATH="${INSTALLER_DIR}/${TAR_FILE}"
+elif [ -f "${SCRIPT_DIR}/${TAR_FILE}" ]; then
+    TAR_PATH="${SCRIPT_DIR}/${TAR_FILE}"
+else
+    echo -e "${RED}✗  ERROR: '${TAR_FILE}' not found.${NC}"
+    echo -e "${YELLOW}  Place 'hetero_gnn_project.tar' in the same folder as 'setup_macOS.app' and re-run.${NC}"
+    read -r -p "Press Enter to exit..."; exit 1
+fi
+
+# Skip if already loaded
+if docker images --format "{{.Repository}}:{{.Tag}}" | grep -q "${IMAGE_NAME}"; then
+    echo -e "${GREEN}✓  Image already loaded: ${IMAGE_NAME}${NC}"
+else
+    echo -e "${CYAN}  Loading from: ${TAR_PATH}${NC}"
+    echo -e "${CYAN}  This may take a few minutes for the ~7.6 GB image...${NC}"
+    docker load -i "${TAR_PATH}"
+    echo -e "${GREEN}✓  Docker image loaded successfully.${NC}"
+fi
+
+# ------------------------------------------------------------------------------
+# Step 3: Launch the Container
+# ------------------------------------------------------------------------------
+echo -e "\n${BOLD}[Step 3/3]${NC} Launching simulation container..."
+echo -e "${CYAN}  Granting XQuartz display access...${NC}"
+xhost +localhost
+
+echo -e "${YELLOW}
+  ┌─────────────────────────────────────────────────────────┐
+  │  Container is starting. You will be dropped into the    │
+  │  ROS2 workspace at:                                     │
+  │    /workspace/morpho_gnn_robot/morpho_ros2_ws           │
+  │                                                         │
+  │  Gazebo runs in software mode on macOS (ogre engine).   │
+  │  Type 'exit' when finished to remove the container.     │
+  └─────────────────────────────────────────────────────────┘
+${NC}"
+
+docker run -it --rm \
+    -e DISPLAY=host.docker.internal:0 \
+    -e QT_X11_NO_MITSHM=1 \
+    -e GZ_GUI_RENDER_ENGINE=ogre \
+    -v /tmp/.X11-unix:/tmp/.X11-unix:rw \
+    "${IMAGE_NAME}"
+
+echo -e "\n${GREEN}✓  Container session ended. Environment cleaned up.${NC}"
+read -r -p "Press Enter to close this window..."
