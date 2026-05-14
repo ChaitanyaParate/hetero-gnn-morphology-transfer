@@ -825,4 +825,3 @@ See [LICENSE](./LICENSE).
 *Research project by Chaitanya Parate — MIT World Peace University, Pune.*
 *Conducted as part of an independent research initiative in robot learning and morphological generalization.*
 
-*Paper submitted to IEEE ROBIO 2026.*
