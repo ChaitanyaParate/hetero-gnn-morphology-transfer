@@ -4,16 +4,18 @@ import torch
 import torch.nn as nn
 
 # Paths relative to this file's location
-TRAIN_LOC = os.path.dirname(os.path.abspath(__file__))          # .../Training_Location/
+TRAIN_LOC = os.path.dirname(os.path.abspath(__file__))          # .../Training_GNN/
 TRAIN_MLP = os.path.join(os.path.dirname(TRAIN_LOC), 'Training_MLP')
 sys.path.insert(0, TRAIN_LOC)
 
-QUAD_URDF = os.path.join(TRAIN_LOC, 'anymal_stripped.urdf')
-HEX_URDF  = os.path.join(TRAIN_LOC, 'hexapod_anymal.urdf')
+QUAD_URDF = os.path.join(TRAIN_LOC, '..', 'URDFs', 'anymal_stripped.urdf')
+HEX_URDF  = os.path.join(TRAIN_LOC, '..', 'URDFs', 'hexapod_anymal.urdf')
 GNN_CKPT  = os.path.join(TRAIN_LOC, 'checkpoints/multi/gnn_ppo_5320704.pt')
 MLP_CKPT  = os.path.join(TRAIN_MLP, 'checkpoints/mlp_ppo_10711040.pt')
 N_EVAL=20; MAX_STEPS=1000; CMD=np.array([0.7,0.0],dtype=np.float32)
 
+import sys as _sys, os as _os
+_sys.path.insert(0, _os.path.normpath(_os.path.join(_os.path.dirname(_os.path.abspath(__file__)), '..', 'core')))
 from robot_env_bullet import RobotEnvBullet
 from gnn_actor_critic import SlimHeteroGNNActorCritic
 from urdf_to_graph    import URDFGraphBuilder

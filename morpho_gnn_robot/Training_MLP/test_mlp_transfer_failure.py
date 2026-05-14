@@ -1,5 +1,7 @@
 import torch
 import torch.nn as nn
+import sys as _sys, os as _os
+_sys.path.insert(0, _os.path.normpath(_os.path.join(_os.path.dirname(_os.path.abspath(__file__)), '..', 'core')))
 from robot_env_bullet import RobotEnvBullet
 import os
 import glob
@@ -19,7 +21,7 @@ class MLPActorCritic(nn.Module):
         val = self.critic(obs)
         return (mean, val)
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))  # .../morpho_gnn_robot/
-HEXAPOD_URDF = os.path.join(BASE_DIR, 'Training_Location', 'hexapod_anymal.urdf')
+HEXAPOD_URDF = os.path.join(BASE_DIR, '..', 'URDFs', 'hexapod_anymal.urdf')
 MLP_CHECKPOINT_DIR = os.path.join(BASE_DIR, 'Training_MLP', 'checkpoints')
 print('=====================================================')
 print('  MULTI-LAYER PERCEPTRON (MLP) MORPHOLOGY TRANSFER   ')

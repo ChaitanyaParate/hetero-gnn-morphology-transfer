@@ -99,7 +99,7 @@ Natural Language Command
 
 ### 1. URDF → Graph Conversion
 
-**File:** `morpho_gnn_robot/Training_Location/urdf_to_graph.py`
+**File:** `morpho_gnn_robot/core/urdf_to_graph.py`
 
 The `URDFGraphBuilder` parses the robot's URDF file and constructs a `torch_geometric.data.Data` graph:
 
@@ -124,7 +124,7 @@ Because the graph topology is read directly from the URDF at runtime, the same c
 
 ### 2. GNN Actor-Critic (SlimHeteroGNNActorCritic)
 
-**File:** `morpho_gnn_robot/Training_Location/gnn_actor_critic.py`
+**File:** `morpho_gnn_robot/core/gnn_actor_critic.py`
 
 **Total parameters: 31,582** (85% fewer than the MLP baseline's 210,457).
 
@@ -155,7 +155,7 @@ TOTAL                                                         ≈ 31,582
 
 ### 3. PyBullet Training Environment
 
-**File:** `morpho_gnn_robot/Training_Location/robot_env_bullet.py`
+**File:** `morpho_gnn_robot/core/robot_env_bullet.py`
 
 A `gymnasium.Env` wrapping PyBullet physics:
 
@@ -187,7 +187,7 @@ The command vector is broadcast to all joint nodes and the body node in the grap
 
 ### 4. PPO Training Pipeline
 
-**File:** `morpho_gnn_robot/Training_Location/train_gnn_ppo.py`
+**File:** `morpho_gnn_robot/Training_GNN/train_gnn_ppo.py`
 
 Standard CleanRL-style PPO with graph-batched rollouts via `torch_geometric.data.Batch`.
 
@@ -234,7 +234,7 @@ Optional W&B logging with `--track 1`.
 
 ### 5. Zero-Shot Morphology Transfer
 
-**File:** `morpho_gnn_robot/Training_Location/test_morphology_transfer.py`
+**File:** `morpho_gnn_robot/Training_GNN/test_morphology_transfer.py`
 
 The transfer procedure loads a quadruped-trained checkpoint onto an 18-joint hexapod model:
 
@@ -245,7 +245,7 @@ The transfer procedure loads a quadruped-trained checkpoint onto an 18-joint hex
 
 The hexapod URDF is generated programmatically from the quadruped URDF:
 
-**File:** `morpho_gnn_robot/Training_Location/generate_hexapod.py`
+**File:** `morpho_gnn_robot/Training_GNN/generate_hexapod.py`
 
 Clones the `LF_*` and `RF_*` leg kinematic chains, renames them `LM_*` / `RM_*`, and offsets their hip origins by -0.277 m along X to create a physically valid 6-legged body.
 
@@ -253,7 +253,7 @@ Clones the `LF_*` and `RF_*` leg kinematic chains, renames them `LM_*` / `RM_*`,
 
 ### 6. LLM Planning Layer
 
-**File (standalone):** `morpho_gnn_robot/Training_Location/run_llm_policy.py`
+**File (standalone):** `morpho_gnn_robot/Training_GNN/run_llm_policy.py`
 
 A single-process runner that:
 1. Accepts a natural language instruction (`--instruction "move forward"`)
@@ -333,11 +333,25 @@ The GNN has no such constraint: joint embeddings are computed per-node through s
 .
 ├── morpho_gnn_robot/
 │   │
-│   ├── Training_Location/               # Core RL training & transfer code
+│   ├── core/                            # ★ Single source of truth for shared modules
+│   │   ├── __init__.py
 │   │   ├── gnn_actor_critic.py          # SlimHeteroGNNActorCritic (31,582 params)
-│   │   ├── train_gnn_ppo.py             # PPO training loop (12M steps, 5 seeds)
-│   │   ├── robot_env_bullet.py          # PyBullet Gym env (stderr suppressor included)
+│   │   ├── mlp_actor_critic.py          # MLP baseline policy (210,457 params)
 │   │   ├── urdf_to_graph.py             # URDF → PyTorch Geometric graph
+│   │   └── robot_env_bullet.py          # PyBullet Gym env (stderr suppressor included)
+│   │
+│   ├── URDFs/                           # ★ Single canonical URDF location
+│   │   ├── anymal.urdf                  # Full ANYmal URDF
+│   │   ├── anymal_stripped.urdf         # Collision-only quadruped URDF (training)
+│   │   ├── hexapod_anymal.urdf          # Generated 18-DOF hexapod URDF
+│   │   ├── aliengo.urdf                 # Unitree Aliengo URDF
+│   │   ├── aliengo_stripped.urdf        # Collision-only Aliengo (eval)
+│   │   ├── go1.urdf                     # Unitree Go1 URDF
+│   │   ├── go1_stripped.urdf            # Collision-only Go1 (eval)
+│   │   └── solo.srdf
+│   │
+│   ├── Training_GNN/               # GNN RL training & evaluation scripts
+│   │   ├── train_gnn_ppo.py             # PPO training loop (12M steps, 5 seeds)
 │   │   ├── finetune_transfer.py         # Staged fine-tuning on target morphologies
 │   │   ├── eval_comprehensive.py        # Zero-shot vs fine-tuned benchmark
 │   │   ├── eval_third_party_transfer.py # Unitree zero-shot evaluation
@@ -345,88 +359,67 @@ The GNN has no such constraint: joint embeddings are computed per-node through s
 │   │   ├── run_llm_policy.py            # LLM command → GNN policy (standalone PyBullet)
 │   │   ├── test_morphology_transfer.py  # Zero-shot quad→hex transfer demo
 │   │   ├── generate_hexapod.py          # Procedural 18-DOF hexapod URDF generator
-│   │   ├── anymal.urdf                  # Full ANYmal URDF
-│   │   ├── anymal_stripped.urdf         # Collision-only quadruped URDF (training)
-│   │   ├── hexapod_anymal.urdf          # Generated 18-DOF hexapod URDF
-│   │   ├── eval_results.json            # Zero-shot benchmark results
-│   │   ├── eval_results_transfer.json   # Morphology transfer results
-│   │   ├── eval_results_unitree.json    # Unitree evaluation results
-│   │   └── eval_comprehensive_results.json  # Full cross-morphology benchmark
+│   │   ├── record_video.py              # Supplementary video recorder (4 scenes)
+│   │   └── eval_results*.json           # Benchmark result files
 │   │
 │   ├── Training_MLP/                    # MLP baseline (demonstrates transfer failure)
-│   │   ├── mlp_actor_critic.py          # Standard MLP policy (210,457 params)
 │   │   ├── train_mlp_ppo.py             # MLP PPO training (12M steps, 5 seeds)
-│   │   ├── robot_env_bullet.py          # Same PyBullet environment
-│   │   ├── generate_hexapod.py
-│   │   ├── anymal.urdf
-│   │   ├── anymal_stripped.urdf
-│   │   ├── hexapod_anymal.urdf
 │   │   └── test_mlp_transfer_failure.py
 │   │
-│   ├── URDFs/                           # Third-party robot URDFs
-│   │   ├── aliengo.urdf                 # Full Unitree Aliengo URDF
-│   │   ├── aliengo_stripped.urdf        # Collision-only Aliengo (used in eval)
-│   │   ├── go1.urdf                     # Full Unitree Go1 URDF
-│   │   ├── go1_stripped.urdf            # Collision-only Go1 (used in eval)
-│   │   └── solo.srdf                    # Solo robot semantic description
+│   ├── best_model/                      # Top checkpoints from 5-seed sweep
+│   │   ├── gnn_ppo_*.pt                 # Best GNN checkpoints per seed
+│   │   └── mlp_ppo_*.pt
 │   │
-│   └── morpho_ros2_ws/                  # ROS2 Jazzy / Gazebo Harmonic workspace
-│       └── src/morpho_robot/
-│           ├── morpho_robot/            # Python package
-│           │   ├── gnn_policy_node.py       # 200Hz GNN inference loop
-│           │   ├── MLP_policy_node.py       # 200Hz MLP inference loop
-│           │   ├── llm_planner_node.py      # Ollama LLM → /llm_action
-│           │   ├── skill_translator_node.py # Plan → /goal_pose
-│           │   ├── vision_node.py           # YOLOv8 + depth perception
-│           │   ├── gnn_actor_critic.py      # GNN model (copy for ROS2)
-│           │   ├── urdf_to_graph.py         # Graph builder (copy for ROS2)
-│           │   └── __init__.py
-│           ├── urdf/
-│           │   ├── anymal.urdf
-│           │   └── anymal_stripped.urdf
-│           ├── launch/morpho_robot.launch.py
-│           ├── config/bridge.yaml
-│           ├── worlds/warehouse_world.sdf
-│           ├── package.xml
-│           ├── setup.py / setup.cfg
-│           ├── anymal.urdf              # Top-level copy for Gazebo spawner
-│           └── test/                   # ROS2 lint & copyright tests
+│   ├── morpho_ros2_ws/                  # ROS2 Jazzy / Gazebo Harmonic workspace
+│   │   └── src/morpho_robot/
+│   │       ├── morpho_robot/            # Python package (ROS2 nodes)
+│   │       │   ├── gnn_policy_node.py       # 200Hz GNN inference loop
+│   │       │   ├── MLP_policy_node.py       # 200Hz MLP inference loop
+│   │       │   ├── llm_planner_node.py      # Ollama LLM → /llm_action
+│   │       │   ├── skill_translator_node.py # Plan → /goal_pose
+│   │       │   └── vision_node.py           # YOLOv8 + depth perception
+│   │       ├── urdf/                        # ROS2 colcon URDF copies (required by package)
+│   │       │   ├── anymal.urdf
+│   │       │   └── anymal_stripped.urdf
+│   │       ├── launch/morpho_robot.launch.py
+│   │       ├── config/bridge.yaml
+│   │       ├── worlds/warehouse_world.sdf
+│   │       └── package.xml / setup.py
+│   │
+│   └── plots/                           # Publication-ready result figures
+│       ├── zero_shot_transfer_barplot.png/.pdf
+│       └── zero_shot_transfer_boxplot.png/.pdf
 │
-├── GNN_Fine-tuning_output/              # Kaggle fine-tuning learning curves
-│   ├── Hexapod/curve_hexapod.json       # 500K steps → reward 110→416 (+3.8×)
-│   ├── aliengo/curve_aliengo.json
-│   └── go1/curve_go1.json
+├── GNN_Fine-tuning_output/              # Fine-tuning checkpoints & learning curves
+│   ├── Hexapod/
+│   │   ├── finetuned_hexapod_final.pt   # ★ 500K steps → reward 110→416 (+3.8×)
+│   │   ├── finetuned_hexapod_*.pt       # Intermediate checkpoints
+│   │   └── curve_hexapod.json           # Learning curve data
+│   ├── aliengo/
+│   │   ├── finetuned_aliengo_final.pt
+│   │   └── curve_aliengo.json
+│   └── go1/
+│       ├── finetuned_go1_final.pt
+│       └── curve_go1.json
 │
-├── kaggle_gnn_finetune/                 # Kaggle notebook deployment bundle
-│   └── kaggle_package/
-│       ├── finetune_transfer.py
-│       ├── robot_env_bullet.py
-│       ├── gnn_actor_critic.py
-│       ├── urdf_to_graph.py
-│       ├── anymal.urdf
-│       ├── hexapod_anymal.urdf
-│       ├── aliengo_stripped.urdf
-│       └── go1_stripped.urdf
+├── kaggle_gnn_finetune/                 # Kaggle fine-tuning notebooks
+│   └── (Jupyter notebooks for hexapod / Aliengo / Go1 fine-tuning on Kaggle GPU)
 │
-├── kaggle_package/                      # Flat copy for Kaggle dataset upload
-│   └── (identical contents to above)
+├── training_with_different_seed_notebooks/  # 5-seed training notebooks + timing data
+│   ├── README.md                        # Seed → checkpoint → reward mapping
+│   ├── gnn-training-seed-{0..4}-part-*.ipynb
+│   ├── mlp-training-seed-{0..4}-part-*.ipynb
+│   └── time_taken_to_train_gnn_and_mlp_per_seed.csv
 │
 ├── installers/                          # OS-specific setup scripts (gitignored)
-│   ├── README.md                        # OS selection guide
-│   ├── Linux/
-│   │   ├── setup_linux.sh              # Automated Ubuntu/Linux setup
-│   │   └── README.md
-│   ├── Windows/
-│   │   ├── setup_windows.bat           # Double-click launcher
-│   │   ├── setup_windows.ps1           # PowerShell setup logic
-│   │   └── README.md
-│   └── macOS/
-│       ├── setup_macOS.app/            # Native macOS application bundle
-│       └── README.md
+│   ├── README.md
+│   ├── Linux/setup_linux.sh
+│   ├── Windows/setup_windows.bat + .ps1
+│   └── macOS/setup_macOS.app/
 │
 ├── Dockerfile                           # Container image definition
 ├── docker-compose.yml                   # Dev-mode container orchestration
-├── .dockerignore                        # Docker build context exclusions
+├── .dockerignore
 ├── .gitignore
 ├── LICENSE
 └── README.md
@@ -520,7 +513,7 @@ source install/setup.bash
 ### Train the GNN Policy
 
 ```bash
-cd morpho_gnn_robot/Training_Location
+cd morpho_gnn_robot/Training_GNN
 
 # Default run (12M steps, MLP-aligned hyperparameters)
 python train_gnn_ppo.py
@@ -560,7 +553,7 @@ Checkpoints are saved every 70,000 steps and as `gnn_ppo_final.pt` at the end.
 Run staged fine-tuning (100K steps head-only → 400K steps full network):
 
 ```bash
-cd morpho_gnn_robot/Training_Location
+cd morpho_gnn_robot/Training_GNN
 
 # Fine-tune on hexapod (recommended — same HAA/HFE/KFE vocabulary)
 python finetune_transfer.py \
@@ -583,7 +576,7 @@ python finetune_transfer.py \
 ### Evaluate Zero-Shot vs Fine-Tuned
 
 ```bash
-cd morpho_gnn_robot/Training_Location
+cd morpho_gnn_robot/Training_GNN
 
 # Benchmark all morphologies (zero-shot from base checkpoint)
 python eval_comprehensive.py \
@@ -604,7 +597,7 @@ Results written to `eval_comprehensive_results.json`.
 ### Run LLM-Guided Policy (PyBullet)
 
 ```bash
-cd morpho_gnn_robot/Training_Location
+cd morpho_gnn_robot/Training_GNN
 
 python run_llm_policy.py \
   --checkpoint ./checkpoints/gnn_ppo_final.pt \
@@ -624,7 +617,7 @@ PyBullet GUI opens automatically. The policy receives the LLM-mapped velocity co
 ### Zero-Shot Hexapod Transfer
 
 ```bash
-cd morpho_gnn_robot/Training_Location
+cd morpho_gnn_robot/Training_GNN
 
 python test_morphology_transfer.py
 
@@ -638,7 +631,7 @@ This loads the quadruped-trained weights, expands `log_std` from 12→18, remaps
 ### Generate Hexapod URDF
 
 ```bash
-cd morpho_gnn_robot/Training_Location
+cd morpho_gnn_robot/Training_GNN
 python generate_hexapod.py
 ```
 
@@ -647,7 +640,7 @@ python generate_hexapod.py
 ### Inspect a Checkpoint
 
 ```bash
-cd morpho_gnn_robot/Training_Location
+cd morpho_gnn_robot/Training_GNN
 python check_checkpoint.py
 ```
 

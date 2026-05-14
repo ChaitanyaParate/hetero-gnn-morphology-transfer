@@ -29,6 +29,8 @@ sys.path.insert(0, HERE)
 BASE_CHECKPOINT_NAME = 'seed2_final.pt'
 BASE_CHECKPOINT = os.path.join(HERE, BASE_CHECKPOINT_NAME)
 
+import sys as _sys, os as _os
+_sys.path.insert(0, _os.path.normpath(_os.path.join(_os.path.dirname(_os.path.abspath(__file__)), '..', 'core')))
 from robot_env_bullet import RobotEnvBullet
 from gnn_actor_critic import SlimHeteroGNNActorCritic
 from urdf_to_graph import URDFGraphBuilder
@@ -36,19 +38,19 @@ from urdf_to_graph import URDFGraphBuilder
 # ── Target configs — all URDFs are in the SAME folder as this script ──────
 TARGET_CONFIGS = {
     'hexapod': {
-        'urdf':             os.path.join(HERE, 'hexapod_anymal.urdf'),
+        'urdf':             os.path.join(HERE, '..', 'URDFs', 'hexapod_anymal.urdf'),
         'height_threshold': 0.15,
         'num_joints':       18,
         'obs_norm_dim':     42,   # 18*2 + 6
     },
     'aliengo': {
-        'urdf':             os.path.join(HERE, 'aliengo_stripped.urdf'),
+        'urdf':             os.path.join(HERE, '..', 'URDFs', 'aliengo_stripped.urdf'),
         'height_threshold': 0.22,
         'num_joints':       12,
         'obs_norm_dim':     30,
     },
     'go1': {
-        'urdf':             os.path.join(HERE, 'go1_stripped.urdf'),
+        'urdf':             os.path.join(HERE, '..', 'URDFs', 'go1_stripped.urdf'),
         'height_threshold': 0.18,
         'num_joints':       12,
         'obs_norm_dim':     30,

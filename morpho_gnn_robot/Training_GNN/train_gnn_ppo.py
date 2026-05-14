@@ -9,6 +9,8 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 from torch_geometric.data import Data, Batch
+import sys as _sys, os as _os
+_sys.path.insert(0, _os.path.normpath(_os.path.join(_os.path.dirname(_os.path.abspath(__file__)), '..', 'core')))
 from urdf_to_graph import URDFGraphBuilder
 from robot_env_bullet import RobotEnvBullet
 from gnn_actor_critic import GNNActorCritic
@@ -92,11 +94,11 @@ def parse_args() -> Config:
         cfg.run_name = f'gnn_ppo_seed{cfg.seed}_{int(time.time())}'
     if cfg.urdf_path == 'auto':
         base_dir = os.path.dirname(os.path.abspath(__file__))
-        path = os.path.join(base_dir, 'anymal_stripped.urdf')
+        path = os.path.join(base_dir, '..', 'URDFs', 'anymal_stripped.urdf')
         if not os.path.exists(path):
             path = os.path.join(base_dir, '..', 'morpho_ros2_ws', 'src', 'morpho_robot', 'urdf', 'anymal.urdf')
         if not os.path.exists(path):
-            path = os.path.join(base_dir, 'anymal.urdf')
+            path = os.path.join(base_dir, '..', 'URDFs', 'anymal.urdf')
         cfg.urdf_path = os.path.abspath(path)
     return cfg
 

@@ -9,6 +9,9 @@ from sensor_msgs.msg import JointState
 from nav_msgs.msg import Odometry
 from std_msgs.msg import Float64, String
 import json
+import sys as _sys, os as _os
+_sys.path.insert(0, _os.path.normpath(_os.path.join(_os.path.dirname(_os.path.abspath(__file__)), '..', '..', '..', '..', 'core')))
+
 try:
     from urdf_to_graph import URDFGraphBuilder
 except ImportError as exc:

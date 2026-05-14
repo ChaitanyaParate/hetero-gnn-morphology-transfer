@@ -21,6 +21,8 @@ import numpy as np
 import torch
 
 sys.path.insert(0, os.path.dirname(__file__))
+import sys as _sys, os as _os
+_sys.path.insert(0, _os.path.normpath(_os.path.join(_os.path.dirname(_os.path.abspath(__file__)), '..', 'core')))
 from robot_env_bullet import RobotEnvBullet
 from gnn_actor_critic import SlimHeteroGNNActorCritic
 from urdf_to_graph import URDFGraphBuilder
@@ -32,12 +34,12 @@ BASE_CKPT = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file_
 # ─── Robot configs ─────────────────────────────────────────────────────────
 ROBOTS = {
     'anymal_quad': {
-        'urdf':             'anymal.urdf',
+        'urdf':             '../URDFs/anymal.urdf',
         'height_threshold': 0.25,
         'label':            'ANYmal Quadruped (training)',
     },
     'anymal_hex': {
-        'urdf':             'hexapod_anymal.urdf',
+        'urdf':             '../URDFs/hexapod_anymal.urdf',
         'height_threshold': 0.15,
         'label':            'ANYmal Hexapod (zero-shot)',
     },
@@ -53,7 +55,7 @@ ROBOTS = {
     },
     # Aliases used by finetune_transfer.py target names
     'hexapod': {
-        'urdf':             'hexapod_anymal.urdf',
+        'urdf':             '../URDFs/hexapod_anymal.urdf',
         'height_threshold': 0.15,
         'label':            'ANYmal Hexapod (fine-tuned)',
     },
@@ -171,7 +173,7 @@ def eval_transfer(ckpt_path, n_episodes=20):
 
 def eval_terrain(ckpt_path, n_episodes=20):
     """Terrain robustness evaluation on the ANYmal quadruped."""
-    urdf = 'anymal.urdf'
+    urdf = '../URDFs/anymal.urdf'
     gb   = URDFGraphBuilder(urdf, add_body_node=True)
     n    = gb.action_dim
     model, q_mean, q_var = load_base_model(ckpt_path, n)

@@ -65,3 +65,7 @@ finetune_checkpoints/
 training_with_different_seed_notebooks
 
 *.tar
+
+video_out/
+
+record_video.py

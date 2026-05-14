@@ -8,6 +8,8 @@ import numpy as np
 import torch
 import torch.nn as nn
 import torch.optim as optim
+import sys as _sys, os as _os
+_sys.path.insert(0, _os.path.normpath(_os.path.join(_os.path.dirname(_os.path.abspath(__file__)), '..', 'core')))
 from robot_env_bullet import RobotEnvBullet
 from mlp_actor_critic import MLPActorCritic
 
@@ -92,8 +94,8 @@ def parse_args() -> Config:
         base_dir = os.path.dirname(os.path.abspath(__file__))
         # Priority: local stripped URDF -> kaggle working dir -> ros2 ws
         for candidate in [
-            os.path.join(base_dir, 'anymal_stripped.urdf'),
-            os.path.join(base_dir, 'anymal.urdf'),
+            os.path.join(base_dir, '..', 'URDFs', 'anymal_stripped.urdf'),
+            os.path.join(base_dir, '..', 'URDFs', 'anymal.urdf'),
             '/kaggle/working/anymal.urdf',
             os.path.join(base_dir, '..', 'morpho_ros2_ws', 'src', 'morpho_robot', 'urdf', 'anymal.urdf'),
         ]:

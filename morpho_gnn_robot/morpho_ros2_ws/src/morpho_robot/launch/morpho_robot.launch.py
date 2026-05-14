@@ -326,7 +326,7 @@ def generate_launch_description():
     # -----------------------------------------------------------------------
 
     vision_node = TimerAction(
-        period=5.0,
+        period=10.0,   # start after bridge is stable; gives 5s head-start over LLM
         actions=[
             ExecuteProcess(
                 cmd=[
@@ -351,7 +351,7 @@ def generate_launch_description():
     # -----------------------------------------------------------------------
 
     llm_planner_node = TimerAction(
-        period=5.0,
+        period=15.0,   # 5s after vision_node — ensures /scene_graph is publishing first
         actions=[
             Node(
                 package=PKG,
@@ -387,7 +387,7 @@ def generate_launch_description():
     # -----------------------------------------------------------------------
 
     skill_translator_node = TimerAction(
-        period=5.0,
+        period=16.0,   # 1s after LLM node
         actions=[
             Node(
                 package=PKG,
@@ -419,7 +419,7 @@ def generate_launch_description():
     # -----------------------------------------------------------------------
 
     mlp_policy_node = TimerAction(
-        period=7.0,
+        period=17.0,
         actions=[
             ExecuteProcess(
                 condition=LaunchConfigurationEquals("policy_type", "mlp"),
@@ -441,7 +441,7 @@ def generate_launch_description():
     )
 
     gnn_policy_node = TimerAction(
-        period=7.0,
+        period=17.0,
         actions=[
             ExecuteProcess(
                 condition=LaunchConfigurationEquals("policy_type", "gnn"),
@@ -495,16 +495,16 @@ def generate_launch_description():
             log_level_arg,
             spawn_yaw_arg,
             device_arg,
-            # Nodes -- order matters due to TimerAction delays
-            robot_state_publisher,  # immediate
-            *gazebo,                 # immediate
-            spawn_robot,            # +2 s
-            gz_bridge,              # +4 s
-            vision_node,            # +5 s
-            llm_planner_node,       # +5 s
-            skill_translator_node,  # +5 s
-            mlp_policy_node,        # +7.0 s
-            gnn_policy_node,        # +7.0 s
+            # Nodes — deterministic startup sequence via TimerAction
+            robot_state_publisher,  # t=0s  (immediate)
+            *gazebo,                # t=0s  (immediate)
+            spawn_robot,            # t=5s  (Gazebo world loaded)
+            gz_bridge,              # t=9s  (robot spawned)
+            vision_node,            # t=10s (bridge ready — YOLOv8 starts)
+            llm_planner_node,       # t=15s (5s after vision — /scene_graph is live)
+            skill_translator_node,  # t=16s (LLM initialized)
+            mlp_policy_node,        # t=17s (full pipeline ready)
+            gnn_policy_node,        # t=17s (full pipeline ready)
             rviz,                   # conditional
         ]
     )

@@ -2,8 +2,8 @@
   "transfer": {
     "anymal_quad": {
       "label": "ANYmal Quadruped (training)",
-      "mean": 2194.12,
-      "std": 509.53,
+      "mean": 2456.36,
+      "std": 462.69,
       "mean_steps": 1000,
       "success_rate": 100.0,
       "n_episodes": 20,
@@ -11,65 +11,65 @@
     },
     "anymal_hex": {
       "label": "ANYmal Hexapod (zero-shot)",
-      "mean": 94.16,
-      "std": 27.11,
-      "mean_steps": 46.6,
+      "mean": 108.92,
+      "std": 30.47,
+      "mean_steps": 49.4,
       "success_rate": 0.0,
       "n_episodes": 20,
-      "mean_fall_step": 46.6
+      "mean_fall_step": 49.4
     },
     "aliengo": {
       "label": "Unitree Aliengo (zero-shot)",
-      "mean": 299.22,
-      "std": 118.24,
-      "mean_steps": 90.8,
+      "mean": 323.46,
+      "std": 125.08,
+      "mean_steps": 99.2,
       "success_rate": 0.0,
       "n_episodes": 20,
-      "mean_fall_step": 90.8
+      "mean_fall_step": 99.2
     },
     "go1": {
       "label": "Unitree Go1 (zero-shot)",
-      "mean": 467.97,
-      "std": 282.67,
-      "mean_steps": 158.9,
+      "mean": 421.38,
+      "std": 238.84,
+      "mean_steps": 150.2,
       "success_rate": 0.0,
       "n_episodes": 20,
-      "mean_fall_step": 158.9
+      "mean_fall_step": 150.2
     },
     "hexapod": {
       "label": "ANYmal Hexapod (fine-tuned)",
-      "mean": 104.21,
-      "std": 35.36,
-      "mean_steps": 46.7,
+      "mean": 96.03,
+      "std": 23.89,
+      "mean_steps": 47.2,
       "success_rate": 0.0,
       "n_episodes": 20,
-      "mean_fall_step": 46.7
+      "mean_fall_step": 47.2
     }
   },
   "terrain": {
     "flat": {
-      "mean": 2417.48,
-      "std": 621.45,
+      "mean": 2339.35,
+      "std": 488.79,
       "mean_steps": 1000,
       "success_rate": 100.0,
       "n_episodes": 20,
       "mean_fall_step": null
     },
     "slope_5deg": {
-      "mean": 2091.99,
-      "std": 819.04,
-      "mean_steps": 905.6,
-      "success_rate": 90.0,
+      "mean": 2438.61,
+      "std": 648.69,
+      "mean_steps": 1000,
+      "success_rate": 100.0,
       "n_episodes": 20,
-      "mean_fall_step": 56
+      "mean_fall_step": null
     },
     "slope_10deg": {
-      "mean": 187.19,
-      "std": 37.34,
-      "mean_steps": 54.2,
+      "mean": 179.23,
+      "std": 34.76,
+      "mean_steps": 53.9,
       "success_rate": 0.0,
       "n_episodes": 20,
-      "mean_fall_step": 54.2
+      "mean_fall_step": 53.9
     },
     "uneven_2cm": {
       "mean": 135.13,

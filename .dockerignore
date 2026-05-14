@@ -17,3 +17,7 @@ kaggle_gnn_finetune.zip
 llama.cpp
 
 installers/
+
+video_out/
+
+record_video.py

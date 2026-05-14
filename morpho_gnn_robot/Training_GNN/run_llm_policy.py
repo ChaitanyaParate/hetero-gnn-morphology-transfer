@@ -3,6 +3,8 @@ import time
 import torch
 import numpy as np
 from torch_geometric.data import Batch
+import sys as _sys, os as _os
+_sys.path.insert(0, _os.path.normpath(_os.path.join(_os.path.dirname(_os.path.abspath(__file__)), '..', 'core')))
 from gnn_actor_critic import GNNActorCritic
 from urdf_to_graph import URDFGraphBuilder
 from robot_env_bullet import RobotEnvBullet
@@ -32,7 +34,7 @@ def get_command_vector(llm_instruction: str) -> np.ndarray:
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--checkpoint', type=str, required=True, help='Path to trained GNN policy checkpoint')
-    parser.add_argument('--urdf', type=str, default='anymal_stripped.urdf')
+    parser.add_argument('--urdf', type=str, default=os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'URDFs', 'anymal_stripped.urdf'))
     parser.add_argument('--instruction', type=str, default='move forward')
     parser.add_argument('--stochastic', action='store_true', help='Use stochastic actions (like during training)')
     args = parser.parse_args()

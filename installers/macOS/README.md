@@ -78,7 +78,7 @@ From here you can run:
 ros2 launch morpho_robot morpho_robot.launch.py
 
 # Run zero-shot evaluation
-python3 /workspace/morpho_gnn_robot/Training_Location/eval_comprehensive.py
+python3 /workspace/morpho_gnn_robot/Training_GNN/eval_comprehensive.py
 ```
 
 Type `exit` to stop and remove the container when finished.

@@ -1,3 +1,5 @@
+import sys as _sys, os as _os
+_sys.path.insert(0, _os.path.normpath(_os.path.join(_os.path.dirname(_os.path.abspath(__file__)), '..', 'core')))
 """
 eval_third_party_transfer.py
 ============================
@@ -39,14 +41,14 @@ ROBOTS = [
     {
         'name': 'ANYmal Quadruped (training morphology)',
         'label': 'anymal',
-        'urdf': os.path.join(BASE_DIR, 'anymal.urdf'),
+        'urdf': os.path.join(BASE_DIR, '..', 'URDFs', 'anymal.urdf'),
         'height_threshold': 0.25,
         'note': 'In-distribution baseline',
     },
     {
         'name': 'ANYmal Hexapod (self-generated)',
         'label': 'hexapod',
-        'urdf': os.path.join(BASE_DIR, 'hexapod_anymal.urdf'),
+        'urdf': os.path.join(BASE_DIR, '..', 'URDFs', 'hexapod_anymal.urdf'),
         'height_threshold': 0.15,
         'note': 'Zero-shot: +6 joints (LM/RM legs cloned from training morphology)',
     },

@@ -1,5 +1,7 @@
 import torch
 import torch.nn as nn
+import sys as _sys, os as _os
+_sys.path.insert(0, _os.path.normpath(_os.path.join(_os.path.dirname(_os.path.abspath(__file__)), '..', 'core')))
 from robot_env_bullet import RobotEnvBullet
 from gnn_actor_critic import SlimHeteroGNNActorCritic
 from urdf_to_graph import URDFGraphBuilder
@@ -18,9 +20,8 @@ class RunningNorm:
 
     def normalize(self, x: np.ndarray) -> np.ndarray:
         return np.clip((x - self.mean) / (np.sqrt(self.var) + 1e-08), -self.clip, self.clip)
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))  # .../Training_Location/
-HEXAPOD_URDF = os.path.join(BASE_DIR, 'generate_hexapod.py')
-HEXAPOD_URDF = os.path.join(BASE_DIR, 'hexapod_anymal.urdf')
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))  # .../Training_GNN/
+HEXAPOD_URDF = os.path.join(BASE_DIR, '..', 'URDFs', 'hexapod_anymal.urdf')
 CHECKPOINT_DIR = os.path.join(BASE_DIR, 'checkpoints')
 if len(sys.argv) > 1:
     latest_checkpoint = sys.argv[1]
@@ -41,7 +42,7 @@ num_joints = graph_builder.action_dim
 num_nodes = num_joints + 1
 print(f'Parsed Hexapod Graph: {num_nodes} nodes, {num_joints} controllable joints.')
 device = torch.device('cpu')
-model = SlimHeteroGNNActorCritic(node_dim=26, edge_dim=4, hidden_dim=48, num_joints=num_joints).to(device)
+model = SlimHeteroGNNActorCritic(node_dim=28, edge_dim=4, hidden_dim=48, num_joints=num_joints).to(device)
 full_checkpoint = torch.load(latest_checkpoint, map_location=device, weights_only=False)
 if 'agent' in full_checkpoint:
     state_dict = full_checkpoint['agent']

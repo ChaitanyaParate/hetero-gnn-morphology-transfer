@@ -12,6 +12,9 @@ from std_msgs.msg import Float64
 from geometry_msgs.msg import PoseStamped
 import math
 from torch_geometric.data import Batch
+import sys as _sys, os as _os
+_sys.path.insert(0, _os.path.normpath(_os.path.join(_os.path.dirname(_os.path.abspath(__file__)), '..', '..', '..', '..', 'core')))
+
 try:
     from gnn_actor_critic import GNNActorCritic
     from urdf_to_graph import URDFGraphBuilder
