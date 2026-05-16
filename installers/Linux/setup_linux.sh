@@ -75,7 +75,14 @@ echo -e "\n${BOLD}[Step 4/5]${NC} Loading Docker image..."
 if [ ! -f "${SCRIPT_DIR}/${TAR_FILE}" ]; then
     echo -e "${RED}✗  ERROR: '${TAR_FILE}' not found in:${NC}"
     echo -e "       ${SCRIPT_DIR}"
-    echo -e "${YELLOW}  Copy 'hetero_gnn_project.tar' into this folder and re-run.${NC}"
+    echo -e ""
+    echo -e "${YELLOW}  Download it from Google Drive (8.3 GB):${NC}"
+    echo -e "  https://drive.google.com/file/d/1tI2VpsGHoFGOhWkKnZxwH05tAVnjoXd5/view?usp=sharing"
+    echo -e ""
+    echo -e "${CYAN}  Or via terminal:${NC}"
+    echo -e "    pip install gdown && gdown 1tI2VpsGHoFGOhWkKnZxwH05tAVnjoXd5 -O ${SCRIPT_DIR}/${TAR_FILE}"
+    echo -e ""
+    echo -e "${YELLOW}  Then re-run this script.${NC}"
     exit 1
 fi
 
@@ -83,7 +90,7 @@ fi
 if docker images --format "{{.Repository}}:{{.Tag}}" | grep -q "${IMAGE_NAME}"; then
     echo -e "${GREEN}✓  Image already loaded: ${IMAGE_NAME}${NC}"
 else
-    echo -e "${CYAN}  Loading ~8.1 GB image — this may take a few minutes...${NC}"
+    echo -e "${CYAN}  Loading ~8.3 GB image — this may take a few minutes...${NC}"
     sudo docker load -i "${SCRIPT_DIR}/${TAR_FILE}"
     echo -e "${GREEN}✓  Docker image loaded.${NC}"
 fi

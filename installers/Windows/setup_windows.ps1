@@ -57,7 +57,7 @@ $TarPath   = Join-Path $ScriptDir $TarFile
 $ImageName = "relational_bias_for_morphological_generalization-hetero-gnn:latest"
 
 if (-not (Test-Path $TarPath)) {
-    Write-Err "ERROR: '$TarFile' not found in:`n       $ScriptDir`n`n  Copy 'hetero_gnn_project.tar' into this folder and re-run."
+    Write-Err "ERROR: '$TarFile' not found in:`n       $ScriptDir`n`n  Download it from Google Drive (8.3 GB):`n  https://drive.google.com/file/d/1tI2VpsGHoFGOhWkKnZxwH05tAVnjoXd5/view?usp=sharing`n`n  Or via terminal:`n    pip install gdown`n    gdown 1tI2VpsGHoFGOhWkKnZxwH05tAVnjoXd5 -O `"$TarPath`"`n`n  Then re-run this script."
 }
 
 # Convert Windows paths to WSL paths (C:\Users\... -> /mnt/c/Users/...)
@@ -70,7 +70,7 @@ if ($existingImage) {
     Write-Ok "Image already loaded: $ImageName"
 } else {
     Write-Info "Loading from: $WslTarPath"
-    Write-Info "This may take a few minutes for the ~8.1 GB image..."
+    Write-Info "This may take a few minutes for the ~8.3 GB image..."
     wsl -- docker load -i "$WslTarPath"
     if ($LASTEXITCODE -ne 0) { Write-Err "docker load failed. Check the output above." }
     Write-Ok "Docker image loaded successfully."

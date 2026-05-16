@@ -441,9 +441,19 @@ The GNN has no such constraint: joint embeddings are computed per-node through s
 
 The entire environment (ROS2 Jazzy, PyTorch, Gazebo Harmonic, all Python deps) is pre-built into a single Docker image. **No manual dependency installation required.**
 
-#### Step 1 — Get the Docker image
+#### Step 1 — Download the Docker image
 
-The pre-built image (`hetero_gnn_project.tar`, ~8.1 GB) is distributed separately from the source code. Copy it into the OS-specific installer folder.
+The pre-built image (`hetero_gnn_project.tar`, **8.3 GB**) is hosted on Google Drive:
+
+**[⬇ Download hetero_gnn_project.tar (8.3 GB)](https://drive.google.com/file/d/1tI2VpsGHoFGOhWkKnZxwH05tAVnjoXd5/view?usp=sharing)**
+
+Or download via terminal using `gdown`:
+```bash
+pip install gdown
+gdown 1tI2VpsGHoFGOhWkKnZxwH05tAVnjoXd5 -O hetero_gnn_project.tar
+```
+
+Once downloaded, place `hetero_gnn_project.tar` into the OS-specific installer folder (see Step 2).
 
 #### Step 2 — Run the setup script for your OS
 

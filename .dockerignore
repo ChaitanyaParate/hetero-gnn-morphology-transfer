@@ -21,3 +21,5 @@ installers/
 video_out/
 
 record_video.py
+
+hetero_gnn_project.tar

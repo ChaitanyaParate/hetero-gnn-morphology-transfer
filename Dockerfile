@@ -12,12 +12,17 @@ RUN apt-get update && apt-get install -y \
     nano \
     && rm -rf /var/lib/apt/lists/*
 
-# Install Python dependencies natively (Added a 1000-second timeout for massive PyTorch wheels)
-RUN pip3 install --default-timeout=1000 --break-system-packages --no-cache-dir \
+# 1. Install heavy PyTorch wheels from the official high-bandwidth PyTorch index
+RUN pip3 install --default-timeout=1000 --retries 10 --break-system-packages --no-cache-dir \
     torch torchvision \
-    torch-geometric \
-    pybullet gymnasium scipy numpy wandb \
-    ollama
+    --index-url https://download.pytorch.org/whl/cu124
+
+# 2. Install remaining ML dependencies in separate layers to cache progress
+RUN pip3 install --default-timeout=1000 --retries 10 --break-system-packages --no-cache-dir torch-geometric
+
+RUN pip3 install --default-timeout=1000 --retries 10 --break-system-packages --no-cache-dir pybullet
+
+RUN pip3 install --default-timeout=1000 --retries 10 --break-system-packages --no-cache-dir gymnasium scipy numpy wandb ollama
 RUN apt-get update && apt-get install -y ros-jazzy-ros-gz
 
 # Source ROS2 and build the colcon workspace 

@@ -16,15 +16,29 @@ This folder contains the automated setup script for **Ubuntu 22.04 / 24.04** (or
 
 ---
 
-## 📁 What to Place in This Folder
+## ⬇️ Step 1 — Download the Docker Image
 
-Before running the script, copy the Docker image archive here:
+The pre-built image (`hetero_gnn_project.tar`, **8.3 GB**) is hosted on Google Drive:
+
+**[Download hetero_gnn_project.tar (8.3 GB)](https://drive.google.com/file/d/1tI2VpsGHoFGOhWkKnZxwH05tAVnjoXd5/view?usp=sharing)**
+
+Or download automatically via terminal:
+```bash
+pip install gdown
+gdown 1tI2VpsGHoFGOhWkKnZxwH05tAVnjoXd5 -O hetero_gnn_project.tar
+```
+
+---
+
+## 📁 Step 2 — Place in This Folder
+
+After downloading, copy the archive here:
 
 ```
 installers/Linux/
 ├── setup_linux.sh          ← this script
 ├── README.md               ← you are reading this
-└── hetero_gnn_project.tar  ← copy the image archive here  ✅
+└── hetero_gnn_project.tar  ← place it here  ✅
 ```
 
 ---

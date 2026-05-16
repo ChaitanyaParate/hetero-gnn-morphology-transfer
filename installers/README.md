@@ -11,9 +11,17 @@ installers/
 
 ## Quick Start
 
-1. **Copy** `hetero_gnn_project.tar` into the folder matching your OS.
-2. **Run** the setup script inside that folder.
-3. **Read** the `README.md` in that folder if you run into any issues.
+**Step 1 — Download the Docker image (8.3 GB)**
+
+**[⬇ Download hetero_gnn_project.tar](https://drive.google.com/file/d/1tI2VpsGHoFGOhWkKnZxwH05tAVnjoXd5/view?usp=sharing)**
+
+Or via terminal:
+```bash
+pip install gdown
+gdown 1tI2VpsGHoFGOhWkKnZxwH05tAVnjoXd5 -O hetero_gnn_project.tar
+```
+
+**Step 2 — Place the `.tar` into the folder matching your OS, then run the setup script.**
 
 | OS | File to run | How to run |
 |---|---|---|
