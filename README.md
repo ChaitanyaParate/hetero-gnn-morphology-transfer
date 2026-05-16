@@ -1,12 +1,12 @@
 # Constrained Zero-Shot Morphological Transfer for Legged Locomotion via Heterogeneous Graph Neural Networks
 
-[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.20187567.svg)](https://doi.org/10.5281/zenodo.20187567)
+[![DOI](https://img.shields.io/badge/DOI-10.5281%2Fzenodo.20187567-blue.svg)](https://doi.org/10.5281/zenodo.20187567)
 
 > **Zero-shot transfer of a locomotion policy from a 12-DOF quadruped to an 18-DOF hexapod — no retraining required. 500K-step fine-tuning yields a 3.8× reward gain.**
 
 A research project combining Graph Neural Networks (GNN), Proximal Policy Optimization (PPO), and Large Language Model (LLM) planning to create robot locomotion policies that generalize across different robot morphologies at inference time.
 
-Submitted to **IEEE ROBIO 2026**.
+
 
 ---
 
@@ -447,7 +447,7 @@ The entire environment (ROS2 Jazzy, PyTorch, Gazebo Harmonic, all Python deps) i
 
 The pre-built image (`hetero_gnn_project.tar`, **8.3 GB**) is archived on Zenodo with a permanent DOI:
 
-[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.20187567.svg)](https://doi.org/10.5281/zenodo.20187567)
+[![DOI](https://img.shields.io/badge/DOI-10.5281%2Fzenodo.20187567-blue.svg)](https://doi.org/10.5281/zenodo.20187567)
 
 **Primary — Zenodo (permanent, citable):**
 ```bash
@@ -832,8 +832,7 @@ Several training/deployment mismatches were discovered and resolved during Gazeb
 | Yaw-rate PI correction (HAA joint offset) | ✅ Eliminates circular drift |
 | PyBullet stderr suppressor | ✅ fd-level redirect — clean training logs |
 | Publication plots | ✅ Generated |
-| **Research paper** | ✅ **Submitted — IEEE ROBIO 2026** |
-| Target venue | **IEEE ROBIO 2026** |
+| **Research paper** | ✅ Written |
 
 ---
 

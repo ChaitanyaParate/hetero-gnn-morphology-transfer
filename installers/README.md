@@ -17,7 +17,7 @@ installers/
 ```bash
 wget "https://zenodo.org/records/20187567/files/hetero_gnn_project.tar"
 ```
-[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.20187567.svg)](https://doi.org/10.5281/zenodo.20187567)
+[![DOI](https://img.shields.io/badge/DOI-10.5281%2Fzenodo.20187567-blue.svg)](https://doi.org/10.5281/zenodo.20187567)
 
 **Alternative — Google Drive (faster):**
 ```bash
