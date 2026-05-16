@@ -22,15 +22,32 @@ This folder contains the setup application for **macOS 12 Monterey and later**.
 
 ---
 
-## 📁 What to Place in This Folder
+## ⬇️ Step 1 — Download the Docker Image
 
-Before running the app, copy the Docker image archive here:
+The pre-built image (`hetero_gnn_project.tar`, **8.3 GB**) is archived on Zenodo:
+
+**Primary — Zenodo (permanent DOI):**
+```bash
+wget "https://zenodo.org/records/20187567/files/hetero_gnn_project.tar"
+```
+https://doi.org/10.5281/zenodo.20187567
+
+**Alternative — Google Drive:**
+```bash
+pip install gdown && gdown 1tI2VpsGHoFGOhWkKnZxwH05tAVnjoXd5 -O hetero_gnn_project.tar
+```
+
+---
+
+## 📁 Step 2 — Place in This Folder
+
+After downloading, copy the archive here:
 
 ```
 installers/macOS/
 ├── setup_macOS.app         ← double-click this in Finder  ✅
 ├── README.md               ← you are reading this
-└── hetero_gnn_project.tar  ← copy the image archive here  ✅
+└── hetero_gnn_project.tar  ← place it here  ✅
 ```
 
 ---

@@ -57,7 +57,7 @@ $TarPath   = Join-Path $ScriptDir $TarFile
 $ImageName = "relational_bias_for_morphological_generalization-hetero-gnn:latest"
 
 if (-not (Test-Path $TarPath)) {
-    Write-Err "ERROR: '$TarFile' not found in:`n       $ScriptDir`n`n  Download it from Google Drive (8.3 GB):`n  https://drive.google.com/file/d/1tI2VpsGHoFGOhWkKnZxwH05tAVnjoXd5/view?usp=sharing`n`n  Or via terminal:`n    pip install gdown`n    gdown 1tI2VpsGHoFGOhWkKnZxwH05tAVnjoXd5 -O `"$TarPath`"`n`n  Then re-run this script."
+    Write-Err "ERROR: '$TarFile' not found in:`n       $ScriptDir`n`n  Download from Zenodo (permanent DOI, 8.3 GB):`n  https://zenodo.org/records/20187567/files/hetero_gnn_project.tar`n  DOI: https://doi.org/10.5281/zenodo.20187567`n`n  Or from Google Drive:`n  https://drive.google.com/file/d/1tI2VpsGHoFGOhWkKnZxwH05tAVnjoXd5/view?usp=sharing`n`n  Via terminal (wget or gdown):`n    wget https://zenodo.org/records/20187567/files/hetero_gnn_project.tar`n    # or: pip install gdown && gdown 1tI2VpsGHoFGOhWkKnZxwH05tAVnjoXd5 -O `"$TarPath`"`n`n  Then re-run this script."
 }
 
 # Convert Windows paths to WSL paths (C:\Users\... -> /mnt/c/Users/...)

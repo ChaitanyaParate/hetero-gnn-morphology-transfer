@@ -13,9 +13,13 @@ installers/
 
 **Step 1 — Download the Docker image (8.3 GB)**
 
-**[⬇ Download hetero_gnn_project.tar](https://drive.google.com/file/d/1tI2VpsGHoFGOhWkKnZxwH05tAVnjoXd5/view?usp=sharing)**
+**Primary — Zenodo (permanent, citable DOI):**
+```bash
+wget "https://zenodo.org/records/20187567/files/hetero_gnn_project.tar"
+```
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.20187567.svg)](https://doi.org/10.5281/zenodo.20187567)
 
-Or via terminal:
+**Alternative — Google Drive (faster):**
 ```bash
 pip install gdown
 gdown 1tI2VpsGHoFGOhWkKnZxwH05tAVnjoXd5 -O hetero_gnn_project.tar

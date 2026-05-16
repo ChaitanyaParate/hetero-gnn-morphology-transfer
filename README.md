@@ -1,5 +1,7 @@
 # Constrained Zero-Shot Morphological Transfer for Legged Locomotion via Heterogeneous Graph Neural Networks
 
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.20187567.svg)](https://doi.org/10.5281/zenodo.20187567)
+
 > **Zero-shot transfer of a locomotion policy from a 12-DOF quadruped to an 18-DOF hexapod — no retraining required. 500K-step fine-tuning yields a 3.8× reward gain.**
 
 A research project combining Graph Neural Networks (GNN), Proximal Policy Optimization (PPO), and Large Language Model (LLM) planning to create robot locomotion policies that generalize across different robot morphologies at inference time.
@@ -443,15 +445,24 @@ The entire environment (ROS2 Jazzy, PyTorch, Gazebo Harmonic, all Python deps) i
 
 #### Step 1 — Download the Docker image
 
-The pre-built image (`hetero_gnn_project.tar`, **8.3 GB**) is hosted on Google Drive:
+The pre-built image (`hetero_gnn_project.tar`, **8.3 GB**) is archived on Zenodo with a permanent DOI:
 
-**[⬇ Download hetero_gnn_project.tar (8.3 GB)](https://drive.google.com/file/d/1tI2VpsGHoFGOhWkKnZxwH05tAVnjoXd5/view?usp=sharing)**
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.20187567.svg)](https://doi.org/10.5281/zenodo.20187567)
 
-Or download via terminal using `gdown`:
+**Primary — Zenodo (permanent, citable):**
+```bash
+wget "https://zenodo.org/records/20187567/files/hetero_gnn_project.tar"
+# or
+curl -L -o hetero_gnn_project.tar "https://zenodo.org/records/20187567/files/hetero_gnn_project.tar"
+```
+
+**Alternative — Google Drive (faster download):**
 ```bash
 pip install gdown
 gdown 1tI2VpsGHoFGOhWkKnZxwH05tAVnjoXd5 -O hetero_gnn_project.tar
 ```
+
+Or download manually: [Google Drive link](https://drive.google.com/file/d/1tI2VpsGHoFGOhWkKnZxwH05tAVnjoXd5/view?usp=sharing)
 
 Once downloaded, place `hetero_gnn_project.tar` into the OS-specific installer folder (see Step 2).
 
