@@ -60,10 +60,10 @@ if (-not (Test-Path $TarPath)) {
     Write-Err "ERROR: '$TarFile' not found in:`n       $ScriptDir`n`n  Download from Zenodo (permanent DOI, 8.3 GB):`n  https://zenodo.org/records/20187567/files/hetero_gnn_project.tar`n  DOI: https://doi.org/10.5281/zenodo.20187567`n`n  Or from Google Drive:`n  https://drive.google.com/file/d/1tI2VpsGHoFGOhWkKnZxwH05tAVnjoXd5/view?usp=sharing`n`n  Via terminal (wget or gdown):`n    wget https://zenodo.org/records/20187567/files/hetero_gnn_project.tar`n    # or: pip install gdown && gdown 1tI2VpsGHoFGOhWkKnZxwH05tAVnjoXd5 -O `"$TarPath`"`n`n  Then re-run this script."
 }
 
-# Convert Windows paths to WSL paths (C:\Users\... -> /mnt/c/Users/...)
-$WslTarPath   = ($TarPath   -replace '\\', '/') -replace '^([A-Za-z]):', { "/mnt/$($_.Value.ToLower().TrimEnd(':'))" }
-$WslScriptDir = ($ScriptDir -replace '\\', '/') -replace '^([A-Za-z]):', { "/mnt/$($_.Value.ToLower().TrimEnd(':'))" }
-
+# Convert Windows paths to WSL paths (C:\\Users\\... -> /mnt/c/Users/...)
+# Uses simple string methods for PowerShell 5.1 compatibility (Windows 10 default)
+$WslTarPath   = "/mnt/" + $TarPath.Substring(0,1).ToLower()   + $TarPath.Substring(2).Replace('\\', '/')
+$WslScriptDir = "/mnt/" + $ScriptDir.Substring(0,1).ToLower() + $ScriptDir.Substring(2).Replace('\\', '/')
 # Skip load if image already exists
 $existingImage = wsl -- docker images --format "{{.Repository}}:{{.Tag}}" 2>$null | Where-Object { $_ -eq $ImageName }
 if ($existingImage) {

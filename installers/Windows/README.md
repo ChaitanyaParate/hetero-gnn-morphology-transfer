@@ -51,17 +51,39 @@ installers/Windows/
 
 ## 🚀 How to Run
 
-### Step 1 — Pre-check: Install WSL2 (if not already installed)
-Open **PowerShell as Administrator** and run:
+### Step 1 — Install WSL2 + Ubuntu
+
+> ⚠️ **Important:** Having WSL2 enabled is not enough — you also need an actual Linux distribution installed and set as default. Many Windows machines have the WSL framework but no distro, which causes the script to fail.
+
+Open **PowerShell as Administrator** and run all three commands:
+
 ```powershell
-wsl --install
+# 1. Install Ubuntu (installs the Linux distro, not just the framework)
+wsl --install -d Ubuntu
+
+# 2. Set Ubuntu as the default WSL distro
+wsl --set-default Ubuntu
+
+# 3. Verify Ubuntu is listed and marked as default (*)
+wsl --list --verbose
 ```
-Restart your PC when prompted. This installs Ubuntu via WSL2 automatically.
 
-### Step 2 — Pre-check: Install Docker Desktop
-Download and install from: https://www.docker.com/products/docker-desktop/
+Restart your PC when prompted after step 1.
 
-After installing, open Docker Desktop → **Settings → Resources → WSL Integration** → enable it for your Ubuntu distro.
+---
+
+### Step 2 — Install Docker Desktop + Enable WSL Integration
+
+1. Download and install from: https://www.docker.com/products/docker-desktop/
+2. Open Docker Desktop and wait for the engine to start (whale icon in the taskbar).
+3. Go to **Settings → Resources → WSL Integration**.
+4. Click **Refresh** to update the distro list (Ubuntu should now appear).
+5. Toggle **ON** the switch next to **Ubuntu**.
+6. Click **Apply & Restart**.
+
+> ⚠️ If Ubuntu doesn't appear in the list, click Refresh — Docker Desktop caches the distro list and may not detect newly installed distros automatically.
+
+---
 
 ### Step 3 — Run the Setup
 
@@ -70,7 +92,7 @@ After installing, open Docker Desktop → **Settings → Resources → WSL Integ
 > If Windows shows a SmartScreen warning, click **"More info"** → **"Run anyway"**. The script will request Administrator privileges automatically.
 
 The script will automatically:
-1. ✅ Verify WSL2 is installed
+1. ✅ Verify WSL2 + Ubuntu are installed
 2. ✅ Verify Docker Desktop is running
 3. ✅ Load the Docker image from `hetero_gnn_project.tar`
 4. ✅ Launch the simulation container with GPU and Gazebo display
