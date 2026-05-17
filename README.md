@@ -24,6 +24,7 @@ A research project combining Graph Neural Networks (GNN), Proximal Policy Optimi
   - [7. ROS2 / Gazebo Deployment Stack](#7-ros2--gazebo-deployment-stack)
 - [MLP Baseline & Why It Fails](#mlp-baseline--why-it-fails)
 - [Repository Structure](#repository-structure)
+- [🖥️ Test Environment](#️-test-environment)
 - [Installation & Running](#installation--running)
   - [Option A — Docker (Recommended)](#option-a--docker-recommended)
   - [Option B — Manual Install](#option-b--manual-install)
@@ -434,6 +435,24 @@ The GNN has no such constraint: joint embeddings are computed per-node through s
 #   build/ install/ log/ — ROS2 colcon artifacts
 #   installers/         — setup scripts (distributed separately with the .tar)
 ```
+
+---
+
+## 🖥️ Test Environment
+
+This project was developed and all experiments were run on the following hardware:
+
+| Component | Spec |
+|---|---|
+| **OS** | Ubuntu 24.04.4 LTS |
+| **CPU** | Intel Core i5-10300H @ 2.50 GHz (4 cores / 8 threads, up to 4.5 GHz) |
+| **GPU** | NVIDIA GeForce GTX 1650 Ti (4 GB VRAM) |
+| **CUDA** | 13.2 · Driver 595.58.03 |
+| **RAM** | 16 GB |
+| **Storage** | NVMe SSD |
+| **Python** | 3.12.3 |
+
+> **Note:** The GTX 1650 Ti is a **laptop-class GPU with only 4 GB VRAM**. All training (12M PPO steps for GNN, MLP baseline) and zero-shot evaluation completed successfully on this hardware, demonstrating the project is accessible without high-end compute.
 
 ---
 
